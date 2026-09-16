@@ -51,13 +51,6 @@ export const createGroup = async (req, res, next) => {
               },
             },
           },
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
         },
       });
     });
@@ -93,25 +86,6 @@ export const getMyGroup = async (req, res, next) => {
                 },
               },
             },
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            submissions: {
-              include: {
-                assignment: true,
-                submittedBy: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -142,26 +116,6 @@ export const getAllGroups = async (req, res, next) => {
             },
           },
         },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        submissions: {
-          select: {
-            id: true,
-            assignmentId: true,
-            confirmed: true,
-          },
-        },
-        _count: {
-          select: {
-            members: true,
-            submissions: true,
-          },
-        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -190,25 +144,6 @@ export const getGroupById = async (req, res, next) => {
                 name: true,
                 email: true,
                 studentId: true,
-              },
-            },
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        submissions: {
-          include: {
-            assignment: true,
-            submittedBy: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
               },
             },
           },
