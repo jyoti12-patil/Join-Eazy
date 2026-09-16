@@ -1,0 +1,131 @@
+import prisma from '../config/db.js';
+
+export const getDashboardAnalytics = async (req, res, next) => {
+  try {
+    const [
+      totalAssignments,
+      totalGroups,
+      totalStudents,
+      totalSubmissions,
+      groups,
+      assignments,
+      recentSubmissions,
+    ] = await Promise.all([
+      prisma.assignment.count(),
+      prisma.group.count(),
+      prisma.user.count({ where: { role: 'STUDENT' } }),
+      prisma.submission.count({ where: { confirmed: true } }),
+      prisma.group.findMany({
+        include: {
+          members: {
+            include: {
+              user: {
+                select: { id: true, name: true, email: true, studentId: true },
+              },
+            },
+          },
+          submissions: {
+            where: { confirmed: true },
+            select: { assignmentId: true, confirmedAt: true },
+          },
+          assignmentGroups: {
+            select: { assignmentId: true },
+          },
+        },
+      }),
+      prisma.assignment.findMany({
+        include: {
+          assignmentGroups: true,
+          submissions: {
+            where: { confirmed: true },
+            include: {
+              group: { select: { id: true, name: true } },
+              submittedBy: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { dueDate: 'asc' },
+      }),
+      prisma.submission.findMany({
+        where: { confirmed: true },
+        include: {
+          assignment: { select: { id: true, title: true } },
+          group: { select: { id: true, name: true } },
+          submittedBy: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { confirmedAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    // Calculate group performance breakdown
+    const groupPerformance = groups.map((g) => {
+      // Calculate total applicable assignments for this group
+      const assignedCount = assignments.filter(
+        (a) => a.isGlobal || a.assignmentGroups.some((ag) => ag.groupId === g.id)
+      ).length;
+
+      const completedCount = g.submissions.length;
+      const rate = assignedCount > 0 ? Math.round((completedCount / assignedCount) * 100) : 0;
+
+      return {
+        id: g.id,
+        name: g.name,
+        memberCount: g.members.length,
+        members: g.members.map((m) => ({
+          ...m.user,
+          role: m.role,
+        })),
+        assignedCount,
+        completedCount,
+        pendingCount: Math.max(0, assignedCount - completedCount),
+        completionRate: rate,
+      };
+    });
+
+    // Calculate assignment completion breakdown
+    const assignmentStats = assignments.map((a) => {
+      const targetGroupCount = a.isGlobal ? groups.length : a.assignmentGroups.length;
+      const submittedCount = a.submissions.length;
+      const rate = targetGroupCount > 0 ? Math.round((submittedCount / targetGroupCount) * 100) : 0;
+
+      return {
+        id: a.id,
+        title: a.title,
+        dueDate: a.dueDate,
+        isGlobal: a.isGlobal,
+        targetGroupCount,
+        submittedCount,
+        pendingCount: Math.max(0, targetGroupCount - submittedCount),
+        completionRate: rate,
+      };
+    });
+
+    // Overall completion rate
+    const totalPotentialSubmissions = assignments.reduce((acc, a) => {
+      return acc + (a.isGlobal ? groups.length : a.assignmentGroups.length);
+    }, 0);
+
+    const overallRate = totalPotentialSubmissions > 0
+      ? Math.round((totalSubmissions / totalPotentialSubmissions) * 100)
+      : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        summary: {
+          totalAssignments,
+          totalGroups,
+          totalStudents,
+          totalSubmissions,
+          overallRate,
+        },
+        groupPerformance,
+        assignmentStats,
+        recentSubmissions,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

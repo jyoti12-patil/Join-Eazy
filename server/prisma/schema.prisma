@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum GroupRole {
+  LEADER
+  MEMBER
+}
+
+model User {
+  id                 String         @id @default(uuid())
+  name               String
+  email              String         @unique
+  studentId          String?        @unique
+  password           String
+  role               Role           @default(STUDENT)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  // Relationships
+  createdGroups      Group[]        @relation("GroupCreator")
+  groupMemberships   GroupMember[]
+  createdAssignments Assignment[]   @relation("AssignmentCreator")
+  submissions        Submission[]   @relation("SubmittedByUser")
+
+  @@map("users")
+}
+
+model Group {
+  id               String            @id @default(uuid())
+  name             String
+  code             String            @unique @default(uuid())
+  createdById      String
+  createdBy        User              @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  maxMembers       Int               @default(5)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  members          GroupMember[]
+  assignmentGroups AssignmentGroup[]
+  submissions      Submission[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String    @id @default(uuid())
+  groupId   String
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      GroupRole @default(MEMBER)
+  joinedAt  DateTime  @default(now())
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model Assignment {
+  id               String            @id @default(uuid())
+  title            String
+  description      String
+  dueDate          DateTime
+  onedriveLink     String
+  createdById      String
+  createdBy        User              @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  isGlobal         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  assignmentGroups AssignmentGroup[]
+  submissions      Submission[]
+
+  @@map("assignments")
+}
+
+model AssignmentGroup {
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  groupId      String
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, groupId])
+  @@map("assignment_groups")
+}
+
+model Submission {
+  id            String     @id @default(uuid())
+  assignmentId  String
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  groupId       String
+  group         Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  submittedById String
+  submittedBy   User       @relation("SubmittedByUser", fields: [submittedById], references: [id], onDelete: Cascade)
+  confirmed     Boolean    @default(false)
+  submissionNote String?
+  submittedAt   DateTime   @default(now())
+  confirmedAt   DateTime?
+
+  @@unique([assignmentId, groupId])
+  @@map("submissions")
+}
