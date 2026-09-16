@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database Container
+  db:
+    image: postgres:16-alpine
+    container_name: joineazy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: joineazy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d joineazy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Express + Node.js Backend Container
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: joineazy-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://postgres:postgrespassword@db:5432/joineazy?schema=public"
+      JWT_SECRET: "joineazy-super-secret-jwt-key-2026-secure"
+      JWT_EXPIRES_IN: "7d"
+      CLIENT_URL: "http://localhost:3000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React + Tailwind Frontend Container
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: joineazy-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
+    driver: local
