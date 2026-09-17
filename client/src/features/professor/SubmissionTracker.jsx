@@ -92,30 +92,30 @@ export const SubmissionTracker = () => {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full px-4 sm:px-6 py-8 space-y-8">
       {/* Header & Assignment Selector */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Submission Verification Tracker
           </h1>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Monitor group-wise confirmations and student-wise member participation
           </p>
         </div>
 
         {/* Assignment dropdown */}
         <div className="w-full md:w-80">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Select Coursework:
           </label>
           <select
             value={selectedAssignmentId}
             onChange={(e) => setSelectedAssignmentId(e.target.value)}
-            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
           >
             {assignments.map((a) => (
-              <option key={a.id} value={a.id}>
+              <option key={a.id} value={a.id} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 {a.title}
               </option>
             ))}
@@ -125,38 +125,38 @@ export const SubmissionTracker = () => {
 
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Target Groups
           </div>
-          <div className="text-2xl font-black text-slate-900 font-mono">
+          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
             {stats.totalTargetGroups}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Confirmed Submissions
           </div>
-          <div className="text-2xl font-black text-emerald-600 font-mono">
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
             {stats.submittedCount}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Pending Confirmation
           </div>
-          <div className="text-2xl font-black text-amber-600 font-mono">
+          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
             {stats.pendingCount}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
             Completion Rate
           </div>
-          <div className="text-2xl font-black text-brand-600 font-mono">
+          <div className="text-2xl font-black text-brand-600 dark:text-brand-400 font-mono">
             {stats.completionRate}%
           </div>
         </div>
@@ -184,7 +184,7 @@ export const SubmissionTracker = () => {
             href={assignment.onedriveLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-colors shrink-0"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-colors shrink-0 cursor-pointer"
           >
             <Cloud className="w-4 h-4" />
             <span>Open OneDrive Grading Folder</span>
@@ -196,7 +196,7 @@ export const SubmissionTracker = () => {
       {/* Filter and Search Bar */}
       <div className="flex items-center justify-between gap-4">
         <div className="relative flex-1 max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
             <Search className="w-4 h-4" />
           </div>
           <input
@@ -204,11 +204,11 @@ export const SubmissionTracker = () => {
             value={searchFilter}
             onChange={(e) => setSearchFilter(e.target.value)}
             placeholder="Search by group name or student name / ID..."
-            className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
         </div>
 
-        <div className="text-xs text-slate-500 font-medium">
+        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           Showing <strong>{filteredGroups.length}</strong> Groups
         </div>
       </div>
@@ -229,31 +229,31 @@ export const SubmissionTracker = () => {
           return (
             <div
               key={item.group.id}
-              className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs hover:border-slate-300 transition-all space-y-4"
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all space-y-4"
             >
               {/* Group Header Row */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-black flex items-center justify-center text-sm">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center text-sm border border-indigo-100/50 dark:border-indigo-800/50">
                     <Users className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-slate-900">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
                         {item.group.name}
                       </h3>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400 dark:text-slate-500">
                         ({item.group.membersCount} students)
                       </span>
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {isSubmitted ? (
-                        <span className="text-emerald-700 font-medium">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-medium">
                           Confirmed on {confirmedAtFormatted} by{' '}
-                          <strong>{item.submittedBy?.name || 'Group member'}</strong>
+                          <strong className="text-slate-800 dark:text-slate-200">{item.submittedBy?.name || 'Group member'}</strong>
                         </span>
                       ) : (
-                        <span className="text-amber-700 font-medium">
+                        <span className="text-amber-700 dark:text-amber-400 font-medium">
                           Pending submission confirmation
                         </span>
                       )}
@@ -272,17 +272,17 @@ export const SubmissionTracker = () => {
 
               {/* Attached Note if any */}
               {item.submissionNote && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs text-slate-700">
-                  <div className="font-bold text-slate-500 uppercase tracking-wider text-[10px] mb-1">
+                <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
+                  <div className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] mb-1">
                     Student Submission Note:
                   </div>
-                  <p className="italic">"{item.submissionNote}"</p>
+                  <p className="italic text-slate-800 dark:text-slate-200">"{item.submissionNote}"</p>
                 </div>
               )}
 
               {/* Student-wise Roster Grid */}
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5" />
                   <span>Student Members & Roles</span>
                 </div>
@@ -290,13 +290,13 @@ export const SubmissionTracker = () => {
                   {item.group.members.map((member) => (
                     <div
                       key={member.id}
-                      className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/70 flex items-center justify-between text-xs"
+                      className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 flex items-center justify-between text-xs"
                     >
                       <div className="truncate mr-2">
-                        <div className="font-bold text-slate-800 truncate">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
                           {member.name}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono truncate">
+                        <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono truncate">
                           {member.email} {member.studentId && `• ${member.studentId}`}
                         </div>
                       </div>

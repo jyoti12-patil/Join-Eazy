@@ -57,13 +57,13 @@ export const GroupProgressTracker = () => {
   const group = groupData?.group;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full px-4 sm:px-6 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Group Progress & Completion Badges
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Visual milestone tracking for {group?.name || 'your group'}
         </p>
       </div>
@@ -78,51 +78,39 @@ export const GroupProgressTracker = () => {
               <Target className="w-4 h-4" />
               <span>Overall Completion Status</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black">
-              {stats.percentage === 100
-                ? '🎉 All Assignments Completed!'
-                : stats.percentage > 0
-                ? 'Great progress! Keep the momentum.'
-                : 'Assignments pending for your group.'}
+            <h2 className="text-3xl font-black tracking-tight">
+              {stats.percentage}% Completed
             </h2>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Your group has submitted and confirmed{' '}
-              <strong className="text-white font-mono">{stats.completed}</strong> out of{' '}
-              <strong className="text-white font-mono">{stats.total}</strong> assignments assigned by your professors.
+            <p className="text-xs sm:text-sm text-slate-300">
+              {stats.completed} out of {stats.total} total coursework milestones confirmed by your team on OneDrive.
             </p>
-
-            <div className="pt-2">
+            <div className="pt-2 max-w-md">
               <ProgressBar
                 percentage={stats.percentage}
+                showLabel={false}
                 height="h-3.5"
-                subtitle="Completion Bar"
               />
             </div>
           </div>
 
-          {/* Quick Circular / KPI Metric */}
           <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-center min-w-[160px] self-start md:self-auto">
-            <div className="text-4xl font-black tracking-tight text-white font-mono">
-              {stats.percentage}%
+            <div className="text-3xl font-black font-mono text-emerald-400">
+              {stats.completed}/{stats.total}
             </div>
-            <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider mt-1">
-              Final Rate
-            </div>
-            <div className="text-[11px] text-brand-200 mt-2">
-              {stats.completed} of {stats.total} Submitted
+            <div className="text-xs uppercase tracking-wider text-slate-300 font-bold mt-1">
+              Confirmed
             </div>
           </div>
         </div>
       </div>
 
-      {/* Completion Badges Milestone Section */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+      {/* Milestone Badges Grid */}
+      <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-amber-500" />
-            <span>Earned Group Badges</span>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            Team Achievement Badges
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Badges awarded based on timely confirmations and completion milestones
           </p>
         </div>
@@ -132,24 +120,24 @@ export const GroupProgressTracker = () => {
           <div
             className={`p-5 rounded-2xl border transition-all ${
               stats.completed > 0
-                ? 'bg-gradient-to-br from-indigo-50/80 to-white border-indigo-200/80 shadow-xs'
-                : 'bg-slate-50/60 border-slate-200/60 opacity-50'
+                ? 'bg-gradient-to-br from-indigo-50/80 to-white dark:from-indigo-950/60 dark:to-slate-900 border-indigo-200/80 dark:border-indigo-800/60 shadow-xs'
+                : 'bg-slate-50/60 dark:bg-slate-900/60 border-slate-200/60 dark:border-slate-800 opacity-50'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center mb-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 flex items-center justify-center mb-3">
               <Sparkles className="w-5 h-5" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900">First Submission</h4>
-            <p className="text-xs text-slate-500 mt-1">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">First Submission</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Confirmed your group's first assignment on OneDrive.
             </p>
             <div className="mt-3">
               {stats.completed > 0 ? (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
                   Unlocked ✓
                 </span>
               ) : (
-                <span className="text-[11px] text-slate-400">Locked</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">Locked</span>
               )}
             </div>
           </div>
@@ -158,24 +146,24 @@ export const GroupProgressTracker = () => {
           <div
             className={`p-5 rounded-2xl border transition-all ${
               stats.percentage >= 50
-                ? 'bg-gradient-to-br from-blue-50/80 to-white border-blue-200/80 shadow-xs'
-                : 'bg-slate-50/60 border-slate-200/60 opacity-50'
+                ? 'bg-gradient-to-br from-blue-50/80 to-white dark:from-blue-950/60 dark:to-slate-900 border-blue-200/80 dark:border-blue-800/60 shadow-xs'
+                : 'bg-slate-50/60 dark:bg-slate-900/60 border-slate-200/60 dark:border-slate-800 opacity-50'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 flex items-center justify-center mb-3">
               <Award className="w-5 h-5" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900">Halfway Milestone</h4>
-            <p className="text-xs text-slate-500 mt-1">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">Halfway Milestone</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Achieved 50% or higher completion rate across assignments.
             </p>
             <div className="mt-3">
               {stats.percentage >= 50 ? (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
                   Unlocked ✓
                 </span>
               ) : (
-                <span className="text-[11px] text-slate-400">Locked ({stats.percentage}/50%)</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">Locked ({stats.percentage}/50%)</span>
               )}
             </div>
           </div>
@@ -184,24 +172,24 @@ export const GroupProgressTracker = () => {
           <div
             className={`p-5 rounded-2xl border transition-all ${
               stats.percentage === 100 && stats.total > 0
-                ? 'bg-gradient-to-br from-amber-50/80 to-white border-amber-200/80 shadow-xs'
-                : 'bg-slate-50/60 border-slate-200/60 opacity-50'
+                ? 'bg-gradient-to-br from-amber-50/80 to-white dark:from-amber-950/60 dark:to-slate-900 border-amber-200/80 dark:border-amber-800/60 shadow-xs'
+                : 'bg-slate-50/60 dark:bg-slate-900/60 border-slate-200/60 dark:border-slate-800 opacity-50'
             }`}
           >
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 flex items-center justify-center mb-3">
               <Trophy className="w-5 h-5" />
             </div>
-            <h4 className="text-sm font-bold text-slate-900">100% Perfection</h4>
-            <p className="text-xs text-slate-500 mt-1">
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white">100% Perfection</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               All coursework submitted and verified with 0 overdue tasks.
             </p>
             <div className="mt-3">
               {stats.percentage === 100 && stats.total > 0 ? (
-                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
                   Unlocked 🏆
                 </span>
               ) : (
-                <span className="text-[11px] text-slate-400">Locked</span>
+                <span className="text-[11px] text-slate-400 dark:text-slate-500">Locked</span>
               )}
             </div>
           </div>
@@ -209,19 +197,19 @@ export const GroupProgressTracker = () => {
       </div>
 
       {/* Assignment-by-Assignment Breakdown Table */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden transition-colors">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
             Coursework Submission Log
           </h3>
-          <span className="text-xs text-slate-400 font-mono">
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">
             {submissions.length} Total Assignments
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider border-b border-slate-100">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="py-3.5 px-6">Assignment Title</th>
                 <th className="py-3.5 px-4">Due Date</th>
@@ -231,7 +219,7 @@ export const GroupProgressTracker = () => {
                 <th className="py-3.5 px-6 text-right">OneDrive Link</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {submissions.map((sub) => {
                 const isConfirmed = sub.hasSubmitted;
                 const dueDateFormatted = new Date(sub.dueDate).toLocaleDateString('en-US', {
@@ -249,26 +237,26 @@ export const GroupProgressTracker = () => {
                   : '—';
 
                 return (
-                  <tr key={sub.assignmentId} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-6 font-bold text-slate-900">
+                  <tr key={sub.assignmentId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="py-4 px-6 font-bold text-slate-900 dark:text-white">
                       {sub.assignmentTitle}
                     </td>
-                    <td className="py-4 px-4 text-slate-500">
+                    <td className="py-4 px-4 text-slate-500 dark:text-slate-400">
                       {dueDateFormatted}
                     </td>
                     <td className="py-4 px-4">
                       <Badge status={sub.status} />
                     </td>
-                    <td className="py-4 px-4 font-mono text-slate-600">
+                    <td className="py-4 px-4 font-mono text-slate-600 dark:text-slate-400">
                       {confirmedDateFormatted}
                     </td>
                     <td className="py-4 px-4">
                       {sub.submittedBy ? (
-                        <div className="font-medium text-slate-800">
+                        <div className="font-medium text-slate-800 dark:text-slate-200">
                           {sub.submittedBy.name}
                         </div>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-400 dark:text-slate-500">—</span>
                       )}
                     </td>
                     <td className="py-4 px-6 text-right">
@@ -276,7 +264,7 @@ export const GroupProgressTracker = () => {
                         href={sub.onedriveLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-bold hover:underline"
+                        className="inline-flex items-center gap-1.5 text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 font-bold hover:underline"
                       >
                         <span>OneDrive</span>
                         <ExternalLink className="w-3.5 h-3.5" />

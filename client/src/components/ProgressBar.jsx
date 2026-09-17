@@ -19,12 +19,12 @@ export const ProgressBar = ({
   return (
     <div className="w-full">
       {showLabel && (
-        <div className="flex justify-between items-center mb-1.5 text-xs font-semibold text-slate-700">
+        <div className="flex justify-between items-center mb-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <span>{subtitle || 'Progress'}</span>
-          <span className="font-mono text-slate-900">{clamped}%</span>
+          <span className="font-mono text-slate-900 dark:text-slate-100">{clamped}%</span>
         </div>
       )}
-      <div className={`w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60 ${height}`}>
+      <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-700/60 ${height}`}>
         <div
           className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700 ease-out`}
           style={{ width: `${clamped}%` }}

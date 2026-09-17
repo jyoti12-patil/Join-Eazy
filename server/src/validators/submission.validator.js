@@ -10,5 +10,11 @@ export const confirmSubmissionSchema = z.object({
   confirmed: z.literal(true, {
     errorMap: () => ({ message: 'You must confirm that you have submitted your work to OneDrive.' }),
   }),
-  submissionNote: z.string().trim().max(500).optional().nullable(),
+  submissionNote: z
+    .string()
+    .trim()
+    .max(500, 'Submission note cannot exceed 500 characters')
+    .optional()
+    .nullable()
+    .or(z.literal('')),
 });

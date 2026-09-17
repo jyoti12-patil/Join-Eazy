@@ -285,7 +285,7 @@ const mockAssignments = {
       dueDate: payload.dueDate,
       onedriveLink: payload.onedriveLink.trim(),
       isGlobal: Boolean(payload.isGlobal),
-      createdById: adminUser.id,
+      createdById: adminUser?.id || 'admin',
       createdAt: new Date().toISOString(),
       assignmentGroups: payload.isGlobal
         ? []
@@ -353,9 +353,9 @@ const mockSubmissions = {
       submittedAt: new Date().toISOString(),
       confirmedAt: new Date().toISOString(),
       submittedBy: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        id: user?.id || userId,
+        name: user?.name || 'Student',
+        email: user?.email || '',
       },
     };
 
@@ -551,6 +551,23 @@ const mockAnalytics = {
   },
 };
 
+const isMockSession = () => {
+  const token = localStorage.getItem('joineazy_token');
+  return Boolean(token && token.startsWith('mock-'));
+};
+
+const extractErrorMessage = (e) => {
+  if (e.response?.data?.errors && Array.isArray(e.response.data.errors)) {
+    return e.response.data.errors
+      .map((err) => (err.field ? `${err.field}: ${err.message}` : err.message))
+      .join(', ');
+  }
+  if (e.response?.data?.message) {
+    return e.response.data.message;
+  }
+  return e.message || 'An unexpected error occurred';
+};
+
 // Exported high-level API functions with automatic network fallback
 export const api = {
   // Auth
@@ -559,6 +576,9 @@ export const api = {
       const res = await axiosInstance.post('/auth/login', { email, password });
       return res.data.data;
     } catch (e) {
+      if (e.response && e.response.status === 401) {
+        throw new Error(extractErrorMessage(e));
+      }
       console.warn('Using local fallback for login:', e.message);
       return await mockAuth.login(email, password);
     }
@@ -569,12 +589,18 @@ export const api = {
       const res = await axiosInstance.post('/auth/register', payload);
       return res.data.data;
     } catch (e) {
+      if (e.response && (e.response.status === 400 || e.response.status === 409)) {
+        throw new Error(extractErrorMessage(e));
+      }
       console.warn('Using local fallback for register:', e.message);
       return await mockAuth.register(payload);
     }
   },
 
   getMe: async (currentUser) => {
+    if (isMockSession()) {
+      return await mockAuth.getMe(currentUser);
+    }
     try {
       const res = await axiosInstance.get('/auth/me');
       return res.data.data.user;
@@ -584,6 +610,9 @@ export const api = {
   },
 
   searchStudents: async (query) => {
+    if (isMockSession()) {
+      return await mockAuth.searchStudents(query);
+    }
     try {
       const res = await axiosInstance.get(`/auth/students?query=${encodeURIComponent(query)}`);
       return res.data.data.students;
@@ -594,6 +623,9 @@ export const api = {
 
   // Groups
   getMyGroup: async (userId) => {
+    if (isMockSession()) {
+      return await mockGroups.getMyGroup(userId);
+    }
     try {
       const res = await axiosInstance.get('/groups/my-group');
       return res.data.data;
@@ -603,6 +635,9 @@ export const api = {
   },
 
   getAllGroups: async () => {
+    if (isMockSession()) {
+      return await mockGroups.getAllGroups();
+    }
     try {
       const res = await axiosInstance.get('/groups');
       return res.data.data.groups;
@@ -612,34 +647,55 @@ export const api = {
   },
 
   createGroup: async (userId, payload) => {
+    if (isMockSession()) {
+      return await mockGroups.createGroup(userId, payload);
+    }
     try {
       const res = await axiosInstance.post('/groups', payload);
       return res.data.data.group;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockGroups.createGroup(userId, payload);
     }
   },
 
   addMember: async (groupId, identifier, currentUserId) => {
+    if (isMockSession()) {
+      return await mockGroups.addMember(groupId, identifier, currentUserId);
+    }
     try {
       const res = await axiosInstance.post(`/groups/${groupId}/members`, { identifier });
       return res.data.data.member;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockGroups.addMember(groupId, identifier, currentUserId);
     }
   },
 
   removeMember: async (groupId, targetUserId, currentUserId) => {
+    if (isMockSession()) {
+      return await mockGroups.removeMember(groupId, targetUserId, currentUserId);
+    }
     try {
       await axiosInstance.delete(`/groups/${groupId}/members/${targetUserId}`);
       return true;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockGroups.removeMember(groupId, targetUserId, currentUserId);
     }
   },
 
   // Assignments
   getAssignments: async (user) => {
+    if (isMockSession()) {
+      return await mockAssignments.getAll(user);
+    }
     try {
       const res = await axiosInstance.get('/assignments');
       return res.data.data.assignments;
@@ -649,43 +705,70 @@ export const api = {
   },
 
   createAssignment: async (payload, adminUser) => {
+    if (isMockSession()) {
+      return await mockAssignments.create(payload, adminUser);
+    }
     try {
       const res = await axiosInstance.post('/assignments', payload);
       return res.data.data.assignment;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockAssignments.create(payload, adminUser);
     }
   },
 
   updateAssignment: async (id, payload) => {
+    if (isMockSession()) {
+      return await mockAssignments.update(id, payload);
+    }
     try {
       const res = await axiosInstance.put(`/assignments/${id}`, payload);
       return res.data.data.assignment;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockAssignments.update(id, payload);
     }
   },
 
   deleteAssignment: async (id) => {
+    if (isMockSession()) {
+      return await mockAssignments.delete(id);
+    }
     try {
       await axiosInstance.delete(`/assignments/${id}`);
       return true;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockAssignments.delete(id);
     }
   },
 
   // Submissions
   confirmSubmission: async (userId, payload) => {
+    if (isMockSession()) {
+      return await mockSubmissions.confirmSubmission(userId, payload);
+    }
     try {
       const res = await axiosInstance.post('/submissions/confirm', payload);
       return res.data.data.submission;
     } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) {
+        throw new Error(extractErrorMessage(e));
+      }
       return await mockSubmissions.confirmSubmission(userId, payload);
     }
   },
 
   getMyGroupSubmissions: async (userId) => {
+    if (isMockSession()) {
+      return await mockSubmissions.getMyGroupSubmissions(userId);
+    }
     try {
       const res = await axiosInstance.get('/submissions/my-group');
       return res.data.data;
@@ -695,6 +778,9 @@ export const api = {
   },
 
   getSubmissionsByAssignment: async (assignmentId) => {
+    if (isMockSession()) {
+      return await mockSubmissions.getByAssignment(assignmentId);
+    }
     try {
       const res = await axiosInstance.get(`/submissions/assignment/${assignmentId}`);
       return res.data.data;
@@ -705,6 +791,9 @@ export const api = {
 
   // Analytics
   getAnalytics: async () => {
+    if (isMockSession()) {
+      return await mockAnalytics.getDashboardAnalytics();
+    }
     try {
       const res = await axiosInstance.get('/analytics/dashboard');
       return res.data.data;
