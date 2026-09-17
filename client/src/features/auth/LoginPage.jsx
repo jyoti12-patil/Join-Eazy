@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { useTheme } from '../../context/ThemeContext';
-import { Users, Lock, Mail, ArrowRight, Sparkles, Sun, Moon } from 'lucide-react';
+import { Users, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -11,7 +10,6 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
 
   const { login } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -63,27 +61,6 @@ export const LoginPage = () => {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top right Theme Toggle for convenience */}
-      <div className="absolute top-6 right-6 z-20">
-        <button
-          onClick={toggleTheme}
-          type="button"
-          className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 text-white shadow-lg backdrop-blur-md transition-all flex items-center gap-2 text-xs font-semibold"
-          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {isDark ? (
-            <>
-              <Sun className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline">Light</span>
-            </>
-          ) : (
-            <>
-              <Moon className="w-4 h-4 text-indigo-300" />
-              <span className="hidden sm:inline">Dark</span>
-            </>
-          )}
-        </button>
-      </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center">
