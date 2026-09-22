@@ -11,12 +11,14 @@ import { StudentDashboard } from './features/student/StudentDashboard';
 import { GroupManager } from './features/student/GroupManager';
 import { AssignmentList } from './features/student/AssignmentList';
 import { GroupProgressTracker } from './features/student/GroupProgressTracker';
+import { CourseAssignments } from './features/student/CourseAssignments';
 
 // Professor Features
 import { ProfessorDashboard } from './features/professor/ProfessorDashboard';
 import { AssignmentManager } from './features/professor/AssignmentManager';
 import { SubmissionTracker } from './features/professor/SubmissionTracker';
 import { GroupOverview } from './features/professor/GroupOverview';
+import { CourseManager } from './features/professor/CourseManager';
 
 // Protected Route Guard
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -90,113 +92,137 @@ export const App = () => {
 
         <main className="flex-1">
           <Routes>
-          {/* Public Routes */}
-          <Route
-            path="/login"
-            element={user ? <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace /> : <LoginPage />}
-          />
-          <Route
-            path="/register"
-            element={user ? <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace /> : <RegisterPage />}
-          />
+            {/* Public Routes */}
+            <Route
+              path="/login"
+              element={user ? <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace /> : <LoginPage />}
+            />
+            <Route
+              path="/register"
+              element={user ? <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace /> : <RegisterPage />}
+            />
 
-          {/* Student Protected Routes */}
-          <Route
-            path="/student"
-            element={
-              <ProtectedRoute allowedRoles={['STUDENT']}>
-                <StudentDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/student/groups"
-            element={
-              <ProtectedRoute allowedRoles={['STUDENT']}>
-                <GroupManager />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/student/assignments"
-            element={
-              <ProtectedRoute allowedRoles={['STUDENT']}>
-                <AssignmentList />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/student/progress"
-            element={
-              <ProtectedRoute allowedRoles={['STUDENT']}>
-                <GroupProgressTracker />
-              </ProtectedRoute>
-            }
-          />
+            {/* Student Protected Routes */}
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/courses/:courseId"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <CourseAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <CourseAssignments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/groups"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <GroupManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <AssignmentList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student/progress"
+              element={
+                <ProtectedRoute allowedRoles={['STUDENT']}>
+                  <GroupProgressTracker />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Professor / Admin Protected Routes */}
-          <Route
-            path="/professor"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <ProfessorDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/professor/assignments"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <AssignmentManager />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/professor/submissions"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <SubmissionTracker />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/professor/groups"
-            element={
-              <ProtectedRoute allowedRoles={['ADMIN']}>
-                <GroupOverview />
-              </ProtectedRoute>
-            }
-          />
+            {/* Professor / Admin Protected Routes */}
+            <Route
+              path="/professor"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <ProfessorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/professor/courses"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <CourseManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/professor/assignments"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <AssignmentManager />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/professor/submissions"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <SubmissionTracker />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/professor/groups"
+              element={
+                <ProtectedRoute allowedRoles={['ADMIN']}>
+                  <GroupOverview />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Root Redirect */}
-          <Route
-            path="/"
-            element={
-              user ? (
-                <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+            {/* Root Redirect */}
+            <Route
+              path="/"
+              element={
+                user ? (
+                  <Navigate to={user.role === 'ADMIN' ? '/professor' : '/student'} replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
 
-          {/* 404 Fallback */}
-          <Route
-            path="*"
-            element={
-              <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
-                <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white">404</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">The page you requested does not exist.</p>
-                <button
-                  onClick={() => window.history.back()}
-                  className="mt-4 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold"
-                >
-                  Go Back
-                </button>
-              </div>
-            }
-          />
-        </Routes>
+            {/* 404 Fallback */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
+                  <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white">404</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">The page you requested does not exist.</p>
+                  <button
+                    onClick={() => window.history.back()}
+                    className="mt-4 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold"
+                  >
+                    Go Back
+                  </button>
+                </div>
+              }
+            />
+          </Routes>
         </main>
       </div>
     </div>

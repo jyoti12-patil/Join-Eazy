@@ -17,23 +17,58 @@ enum GroupRole {
   MEMBER
 }
 
+enum SubmissionType {
+  INDIVIDUAL
+  GROUP
+}
+
 model User {
-  id                 String         @id @default(uuid())
+  id                 String              @id @default(uuid())
   name               String
-  email              String         @unique
-  studentId          String?        @unique
+  email              String              @unique
+  studentId          String?             @unique
   password           String
-  role               Role           @default(STUDENT)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  role               Role                @default(STUDENT)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   // Relationships
-  createdGroups      Group[]        @relation("GroupCreator")
+  createdGroups      Group[]             @relation("GroupCreator")
   groupMemberships   GroupMember[]
-  createdAssignments Assignment[]   @relation("AssignmentCreator")
-  submissions        Submission[]   @relation("SubmittedByUser")
+  createdAssignments Assignment[]        @relation("AssignmentCreator")
+  submissions        Submission[]        @relation("SubmittedByUser")
+  taughtCourses      Course[]            @relation("CourseProfessor")
+  enrollments        CourseEnrollment[]  @relation("EnrolledCourses")
 
   @@map("users")
+}
+
+model Course {
+  id          String             @id @default(uuid())
+  name        String
+  code        String             @unique
+  description String?
+  professorId String
+  professor   User               @relation("CourseProfessor", fields: [professorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  enrollments CourseEnrollment[]
+  assignments Assignment[]
+
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id         String   @id @default(uuid())
+  courseId   String
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User      @relation("EnrolledCourses", fields: [studentId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@unique([courseId, studentId])
+  @@map("course_enrollments")
 }
 
 model Group {
@@ -72,8 +107,11 @@ model Assignment {
   description      String
   dueDate          DateTime
   onedriveLink     String
+  submissionType   SubmissionType    @default(GROUP)
   createdById      String
   createdBy        User              @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  courseId          String?
+  course           Course?           @relation(fields: [courseId], references: [id], onDelete: SetNull)
   isGlobal         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -96,17 +134,19 @@ model AssignmentGroup {
 }
 
 model Submission {
-  id            String     @id @default(uuid())
-  assignmentId  String
-  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  groupId       String
-  group         Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  submittedById String
-  submittedBy   User       @relation("SubmittedByUser", fields: [submittedById], references: [id], onDelete: Cascade)
-  confirmed     Boolean    @default(false)
-  submissionNote String?
-  submittedAt   DateTime   @default(now())
-  confirmedAt   DateTime?
+  id                    String     @id @default(uuid())
+  assignmentId          String
+  assignment            Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  groupId               String?
+  group                 Group?     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  submittedById         String
+  submittedBy           User       @relation("SubmittedByUser", fields: [submittedById], references: [id], onDelete: Cascade)
+  confirmed             Boolean    @default(false)
+  submissionNote        String?
+  submittedAt           DateTime   @default(now())
+  confirmedAt           DateTime?
+  acknowledgedByLeader  Boolean    @default(false)
+  leaderAcknowledgedAt  DateTime?
 
   @@unique([assignmentId, groupId])
   @@map("submissions")

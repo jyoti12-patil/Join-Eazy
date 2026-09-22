@@ -1,35 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-export const ProgressBar = ({
-  percentage = 0,
-  showLabel = true,
-  height = 'h-3',
-  color = 'indigo',
-  subtitle,
-}) => {
-  const clamped = Math.min(100, Math.max(0, Math.round(percentage)));
+export const ProgressBar = ({ value, max = 100, percentage: propPercentage, label, showPercentage = true, size = 'md', className = '' }) => {
+  const [animatedWidth, setAnimatedWidth] = useState(0);
+  const percentage = propPercentage !== undefined
+    ? Math.min(100, Math.max(0, Math.round(propPercentage)))
+    : (max > 0 ? Math.min(100, Math.max(0, Math.round(((value || 0) / max) * 100))) : 0);
 
-  let barColor = 'from-brand-500 to-indigo-600';
-  if (clamped === 100) {
-    barColor = 'from-emerald-500 to-teal-600';
-  } else if (clamped < 30 && clamped > 0) {
-    barColor = 'from-amber-400 to-amber-500';
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => setAnimatedWidth(percentage), 100);
+    return () => clearTimeout(timer);
+  }, [percentage]);
+
+  // Color transitions based on percentage
+  const getBarColor = () => {
+    if (percentage >= 100) return 'bg-gradient-to-r from-success-400 to-success-500';
+    if (percentage >= 67) return 'bg-gradient-to-r from-success-400 to-success-500';
+    if (percentage >= 34) return 'bg-gradient-to-r from-warning-400 to-warning-500';
+    return 'bg-gradient-to-r from-danger-400 to-danger-500';
+  };
+
+  const getGlowClass = () => {
+    if (percentage >= 100) return 'shadow-glow-success animate-pulse-glow';
+    return '';
+  };
+
+  const heights = {
+    xs: 'h-1',
+    sm: 'h-1.5',
+    md: 'h-2.5',
+    lg: 'h-4',
+  };
 
   return (
-    <div className="w-full">
-      {showLabel && (
-        <div className="flex justify-between items-center mb-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-          <span>{subtitle || 'Progress'}</span>
-          <span className="font-mono text-slate-900 dark:text-slate-100">{clamped}%</span>
+    <div className={`w-full ${className}`}>
+      {(label || showPercentage) && (
+        <div className="flex items-center justify-between mb-1.5">
+          {label && (
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              {label}
+            </span>
+          )}
+          {showPercentage && (
+            <span className={`text-xs font-bold ${
+              percentage >= 100 ? 'text-success-500' : percentage >= 67 ? 'text-success-500' : percentage >= 34 ? 'text-warning-500' : 'text-danger-500'
+            }`}>
+              {percentage}%
+            </span>
+          )}
         </div>
       )}
-      <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-700/60 ${height}`}>
+      <div className={`w-full bg-slate-200 dark:bg-slate-700/50 rounded-full overflow-hidden ${heights[size]} ${getGlowClass()}`}>
         <div
-          className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700 ease-out`}
-          style={{ width: `${clamped}%` }}
-        />
+          className={`${heights[size]} rounded-full progress-bar-fill ${getBarColor()} relative`}
+          style={{ width: `${animatedWidth}%` }}
+        >
+          {/* Inner shine effect */}
+          {animatedWidth > 0 && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          )}
+        </div>
       </div>
     </div>
   );
 };
+
+export default ProgressBar;

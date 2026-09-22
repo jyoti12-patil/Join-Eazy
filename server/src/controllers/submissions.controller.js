@@ -1,9 +1,7 @@
 import prisma from '../config/db.js';
 
 /**
- * Two-Step Submission Confirmation
- * Step 1: User verifies they uploaded to OneDrive and clicks "Yes, I have submitted"
- * Step 2: Confirmation request sent with confirmed: true
+ * Confirm Submission — Leader-only for GROUP assignments, any student for INDIVIDUAL
  */
 export const confirmSubmission = async (req, res, next) => {
   try {
@@ -17,7 +15,78 @@ export const confirmSubmission = async (req, res, next) => {
       });
     }
 
-    // 1. Check student has a group
+    // 1. Check assignment exists and get its type
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      include: {
+        assignmentGroups: true,
+      },
+    });
+
+    if (!assignment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Assignment not found.',
+      });
+    }
+
+    // 2. Handle INDIVIDUAL submissions
+    if (assignment.submissionType === 'INDIVIDUAL') {
+      const existing = await prisma.submission.findFirst({
+        where: {
+          assignmentId,
+          submittedById: userId,
+          groupId: null,
+        },
+      });
+
+      let submission;
+      if (existing) {
+        submission = await prisma.submission.update({
+          where: { id: existing.id },
+          data: {
+            confirmed: true,
+            confirmedAt: new Date(),
+            ...(submissionNote !== undefined && { submissionNote }),
+          },
+          include: {
+            assignment: {
+              select: { id: true, title: true, dueDate: true, onedriveLink: true },
+            },
+            submittedBy: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        });
+      } else {
+        submission = await prisma.submission.create({
+          data: {
+            assignmentId,
+            groupId: null,
+            submittedById: userId,
+            confirmed: true,
+            confirmedAt: new Date(),
+            submissionNote: submissionNote || null,
+          },
+          include: {
+            assignment: {
+              select: { id: true, title: true, dueDate: true, onedriveLink: true },
+            },
+            submittedBy: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Individual submission for "${assignment.title}" confirmed.`,
+        data: { submission },
+      });
+    }
+
+    // 3. Handle GROUP submissions — check student has a group
     const membership = await prisma.groupMember.findFirst({
       where: { userId },
       include: {
@@ -38,28 +107,21 @@ export const confirmSubmission = async (req, res, next) => {
     if (!membership) {
       return res.status(400).json({
         success: false,
-        message: 'You must belong to a group to confirm an assignment submission. Please create or join a group first.',
+        message: 'You must belong to a group to confirm a group assignment submission. Please create or join a group first.',
+      });
+    }
+
+    // 4. LEADER-ONLY enforcement for GROUP assignments
+    if (membership.role !== 'LEADER') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the group leader can submit and acknowledge group assignments. Please ask your group leader to confirm the submission.',
       });
     }
 
     const groupId = membership.groupId;
 
-    // 2. Check assignment exists
-    const assignment = await prisma.assignment.findUnique({
-      where: { id: assignmentId },
-      include: {
-        assignmentGroups: true,
-      },
-    });
-
-    if (!assignment) {
-      return res.status(404).json({
-        success: false,
-        message: 'Assignment not found.',
-      });
-    }
-
-    // 3. Verify assignment is available to this group
+    // 5. Verify assignment is available to this group
     if (!assignment.isGlobal) {
       const isAssigned = assignment.assignmentGroups.some((ag) => ag.groupId === groupId);
       if (!isAssigned) {
@@ -70,7 +132,7 @@ export const confirmSubmission = async (req, res, next) => {
       }
     }
 
-    // 4. Create or update submission
+    // 6. Create or update submission with leader acknowledgment
     const submission = await prisma.submission.upsert({
       where: {
         assignmentId_groupId: {
@@ -82,6 +144,8 @@ export const confirmSubmission = async (req, res, next) => {
         confirmed: true,
         confirmedAt: new Date(),
         submittedById: userId,
+        acknowledgedByLeader: true,
+        leaderAcknowledgedAt: new Date(),
         ...(submissionNote !== undefined && { submissionNote }),
       },
       create: {
@@ -90,6 +154,8 @@ export const confirmSubmission = async (req, res, next) => {
         submittedById: userId,
         confirmed: true,
         confirmedAt: new Date(),
+        acknowledgedByLeader: true,
+        leaderAcknowledgedAt: new Date(),
         submissionNote: submissionNote || null,
       },
       include: {
@@ -107,7 +173,7 @@ export const confirmSubmission = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Assignment "${assignment.title}" submission confirmed for group "${membership.group.name}".`,
+      message: `Assignment "${assignment.title}" submission confirmed by group leader for group "${membership.group.name}". All group members will see this as acknowledged.`,
       data: { submission },
     });
   } catch (error) {
@@ -168,49 +234,109 @@ export const getSubmissionsByAssignment = async (req, res, next) => {
       });
     }
 
-    // Get all relevant groups
-    let targetGroups = [];
-    if (assignment.isGlobal) {
-      targetGroups = await prisma.group.findMany({
-        include: {
-          members: {
-            include: {
-              user: {
-                select: { id: true, name: true, email: true, studentId: true },
+    // Handle GROUP assignment view
+    if (assignment.submissionType === 'GROUP') {
+      let targetGroups = [];
+      if (assignment.isGlobal) {
+        targetGroups = await prisma.group.findMany({
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: { id: true, name: true, email: true, studentId: true },
+                },
               },
             },
           },
+        });
+      } else {
+        targetGroups = assignment.assignmentGroups.map((ag) => ag.group);
+      }
+
+      const groupStatus = targetGroups.map((group) => {
+        const submission = assignment.submissions.find((s) => s.groupId === group.id);
+        return {
+          group: {
+            id: group.id,
+            name: group.name,
+            membersCount: group.members.length,
+            members: group.members.map((m) => ({
+              ...m.user,
+              groupRole: m.role,
+            })),
+          },
+          hasSubmitted: Boolean(submission && submission.confirmed),
+          acknowledgedByLeader: Boolean(submission && submission.acknowledgedByLeader),
+          submittedAt: submission?.submittedAt || null,
+          confirmedAt: submission?.confirmedAt || null,
+          leaderAcknowledgedAt: submission?.leaderAcknowledgedAt || null,
+          submittedBy: submission?.submittedBy || null,
+          submissionNote: submission?.submissionNote || null,
+        };
+      });
+
+      const totalTargetGroups = groupStatus.length;
+      const submittedCount = groupStatus.filter((g) => g.hasSubmitted).length;
+      const pendingCount = totalTargetGroups - submittedCount;
+      const completionRate = totalTargetGroups > 0 ? Math.round((submittedCount / totalTargetGroups) * 100) : 0;
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          assignment: {
+            id: assignment.id,
+            title: assignment.title,
+            dueDate: assignment.dueDate,
+            onedriveLink: assignment.onedriveLink,
+            submissionType: assignment.submissionType,
+          },
+          stats: {
+            totalTargetGroups,
+            submittedCount,
+            pendingCount,
+            completionRate,
+          },
+          groupStatus,
         },
       });
-    } else {
-      targetGroups = assignment.assignmentGroups.map((ag) => ag.group);
     }
 
-    // Map each group with its submission status
-    const groupStatus = targetGroups.map((group) => {
-      const submission = assignment.submissions.find((s) => s.groupId === group.id);
-      return {
-        group: {
-          id: group.id,
-          name: group.name,
-          membersCount: group.members.length,
-          members: group.members.map((m) => ({
-            ...m.user,
-            groupRole: m.role,
-          })),
+    // Handle INDIVIDUAL assignment view
+    let targetStudents = [];
+    if (assignment.courseId) {
+      const enrollments = await prisma.courseEnrollment.findMany({
+        where: { courseId: assignment.courseId },
+        include: {
+          student: {
+            select: { id: true, name: true, email: true, studentId: true },
+          },
         },
+      });
+      targetStudents = enrollments.map((e) => e.student).filter(Boolean);
+    } else {
+      targetStudents = await prisma.user.findMany({
+        where: { role: 'STUDENT' },
+        select: { id: true, name: true, email: true, studentId: true },
+      });
+    }
+
+    const studentStatus = targetStudents.map((student) => {
+      const submission = assignment.submissions.find(
+        (s) => s.submittedById === student.id && !s.groupId
+      );
+      return {
+        student,
         hasSubmitted: Boolean(submission && submission.confirmed),
         submittedAt: submission?.submittedAt || null,
         confirmedAt: submission?.confirmedAt || null,
-        submittedBy: submission?.submittedBy || null,
         submissionNote: submission?.submissionNote || null,
       };
     });
 
-    const totalTargetGroups = groupStatus.length;
-    const submittedCount = groupStatus.filter((g) => g.hasSubmitted).length;
-    const pendingCount = totalTargetGroups - submittedCount;
-    const completionRate = totalTargetGroups > 0 ? Math.round((submittedCount / totalTargetGroups) * 100) : 0;
+    const totalTarget = studentStatus.length;
+    const submittedCount = studentStatus.filter((s) => s.hasSubmitted).length;
+    const pendingCount = Math.max(0, totalTarget - submittedCount);
+    const completionRate = totalTarget > 0 ? Math.round((submittedCount / totalTarget) * 100) : 0;
 
     return res.status(200).json({
       success: true,
@@ -220,14 +346,19 @@ export const getSubmissionsByAssignment = async (req, res, next) => {
           title: assignment.title,
           dueDate: assignment.dueDate,
           onedriveLink: assignment.onedriveLink,
+          submissionType: assignment.submissionType,
         },
         stats: {
-          totalTargetGroups,
+          totalTargetGroups: totalTarget,
+          totalTarget,
           submittedCount,
           pendingCount,
           completionRate,
+          totalSubmissions: submittedCount,
+          confirmedCount: submittedCount,
         },
-        groupStatus,
+        studentStatus,
+        individualSubmissions: studentStatus.filter((s) => s.hasSubmitted),
       },
     });
   } catch (error) {
@@ -246,26 +377,27 @@ export const getMyGroupSubmissions = async (req, res, next) => {
       where: { userId },
     });
 
-    if (!membership) {
-      return res.status(200).json({
-        success: true,
-        data: { submissions: [], stats: { total: 0, completed: 0, percentage: 0 } },
-      });
-    }
-
-    const groupId = membership.groupId;
-
-    // Fetch all assignments applicable to this group
+    // Fetch all assignments applicable to this student
     const assignments = await prisma.assignment.findMany({
       where: {
         OR: [
           { isGlobal: true },
-          { assignmentGroups: { some: { groupId } } },
+          ...(membership ? [{ assignmentGroups: { some: { groupId: membership.groupId } } }] : []),
         ],
       },
       include: {
+        course: {
+          select: { id: true, name: true, code: true },
+        },
         submissions: {
-          where: { groupId },
+          where: membership
+            ? {
+                OR: [
+                  { groupId: membership.groupId },
+                  { submittedById: userId, groupId: null },
+                ],
+              }
+            : { submittedById: userId },
           include: {
             submittedBy: {
               select: { id: true, name: true, email: true },
@@ -277,7 +409,12 @@ export const getMyGroupSubmissions = async (req, res, next) => {
     });
 
     const submissions = assignments.map((assignment) => {
-      const submission = assignment.submissions[0] || null;
+      let submission = null;
+      if (assignment.submissionType === 'GROUP' && membership) {
+        submission = assignment.submissions.find((s) => s.groupId === membership.groupId) || null;
+      } else if (assignment.submissionType === 'INDIVIDUAL') {
+        submission = assignment.submissions.find((s) => s.submittedById === userId && !s.groupId) || null;
+      }
       const isOverdue = new Date(assignment.dueDate) < new Date();
 
       return {
@@ -285,7 +422,10 @@ export const getMyGroupSubmissions = async (req, res, next) => {
         assignmentTitle: assignment.title,
         dueDate: assignment.dueDate,
         onedriveLink: assignment.onedriveLink,
+        submissionType: assignment.submissionType,
+        course: assignment.course,
         hasSubmitted: Boolean(submission && submission.confirmed),
+        acknowledgedByLeader: Boolean(submission && submission.acknowledgedByLeader),
         submittedAt: submission?.submittedAt || null,
         confirmedAt: submission?.confirmedAt || null,
         submittedBy: submission?.submittedBy || null,

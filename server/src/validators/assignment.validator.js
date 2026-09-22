@@ -31,6 +31,8 @@ export const createAssignmentSchema = z.object({
     .refine(isValidUrl, { message: 'Must be a valid URL (OneDrive link)' }),
   isGlobal: z.boolean().optional().default(true),
   groupIds: z.array(z.string()).optional().default([]),
+  submissionType: z.enum(['INDIVIDUAL', 'GROUP']).optional().default('GROUP'),
+  courseId: z.string().optional().nullable(),
 });
 
 export const updateAssignmentSchema = z.object({
@@ -50,5 +52,6 @@ export const updateAssignmentSchema = z.object({
     .optional(),
   isGlobal: z.boolean().optional(),
   groupIds: z.array(z.string()).optional(),
+  submissionType: z.enum(['INDIVIDUAL', 'GROUP']).optional(),
+  courseId: z.string().optional().nullable(),
 });
-

@@ -1,236 +1,207 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { ProgressBar } from '../../components/ProgressBar';
 import { Badge } from '../../components/Badge';
+import { StatusBadge } from '../../components/StatusBadge';
+import { CountdownTimer } from '../../components/CountdownTimer';
 import { ConfirmSubmissionModal } from '../../components/ConfirmSubmissionModal';
+import { SkeletonCard } from '../../components/SkeletonLoader';
 import {
-  BookOpen,
-  Calendar,
-  ExternalLink,
-  CheckCircle2,
-  Clock,
-  Cloud,
-  FileCheck,
-  AlertCircle,
-  Users,
+  BookOpen, ExternalLink, FileCheck, Filter, Clock, CheckCircle2,
+  AlertTriangle, Search, Layers, ChevronDown,
 } from 'lucide-react';
 
 export const AssignmentList = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const courseIdFilter = searchParams.get('courseId');
 
   const [assignments, setAssignments] = useState([]);
-  const [groupData, setGroupData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('ALL'); // ALL, PENDING, SUBMITTED
-
-  // Confirmation modal state
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchData = async () => {
+  const fetchAssignments = async () => {
     setLoading(true);
     try {
-      const [asgRes, groupRes] = await Promise.all([
-        api.getAssignments(user),
-        api.getMyGroup(user.id),
-      ]);
-
-      setAssignments(asgRes || []);
-      setGroupData(groupRes);
+      const data = await api.getAssignments(user);
+      setAssignments(data || []);
     } catch (err) {
-      toast.error('Failed to fetch assignments');
+      toast.error('Failed to load assignments');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    }
-  }, [user]);
+  useEffect(() => { fetchAssignments(); }, []);
 
-  const handleOpenConfirm = (assignment) => {
-    if (!groupData?.group) {
-      toast.error('You must belong to a group before submitting assignments. Please form or join a group first.');
-      return;
-    }
-    setSelectedAssignment(assignment);
-    setConfirmModalOpen(true);
-  };
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      if (courseIdFilter && a.courseId !== courseIdFilter && a.course?.id !== courseIdFilter) return false;
+      if (statusFilter !== 'ALL' && a.submissionStatus !== statusFilter) return false;
+      if (typeFilter !== 'ALL' && a.submissionType !== typeFilter) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return a.title.toLowerCase().includes(q) || a.description?.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [assignments, statusFilter, typeFilter, searchQuery, courseIdFilter]);
 
-  const filteredAssignments = assignments.filter((a) => {
-    if (filter === 'ALL') return true;
-    if (filter === 'SUBMITTED') return a.submissionStatus === 'CONFIRMED';
-    if (filter === 'PENDING') return a.submissionStatus !== 'CONFIRMED';
-    return true;
-  });
+  const statusCounts = useMemo(() => {
+    const counts = { ALL: assignments.length, CONFIRMED: 0, NOT_SUBMITTED: 0, OVERDUE: 0, PENDING_CONFIRMATION: 0 };
+    assignments.forEach((a) => { counts[a.submissionStatus] = (counts[a.submissionStatus] || 0) + 1; });
+    return counts;
+  }, [assignments]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full" />
+      <div className="w-full px-4 sm:px-6 py-8 space-y-4">
+        {[1, 2, 3].map((i) => <SkeletonCard key={i} lines={3} />)}
       </div>
     );
   }
 
-  const group = groupData?.group;
-
   return (
-    <div className="w-full px-4 sm:px-6 py-8 space-y-8">
-      {/* Header & Filter tabs */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Assignments Feed
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Access professor instructions, OneDrive repositories, and confirm submissions
-          </p>
-        </div>
+    <div className="w-full px-4 sm:px-6 py-8 space-y-6">
+      {/* Header */}
+      <div className="space-y-1 animate-fade-in">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-slate-200 flex items-center gap-2">
+          <BookOpen className="w-6 h-6 text-brand-500" />
+          My Assignments
+        </h1>
+        <p className="text-sm text-slate-500">Browse and submit your coursework</p>
+      </div>
 
-        {/* Filter buttons */}
-        <div className="flex p-1 bg-slate-100 dark:bg-slate-800 border border-transparent dark:border-slate-700/60 rounded-2xl w-fit">
-          {['ALL', 'PENDING', 'SUBMITTED'].map((tab) => (
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 animate-fade-in-up">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search assignments..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all"
+          />
+        </div>
+        {/* Status Filter */}
+        <div className="flex gap-1.5 flex-wrap">
+          {['ALL', 'NOT_SUBMITTED', 'CONFIRMED', 'OVERDUE'].map((s) => (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                filter === tab
-                  ? 'bg-white dark:bg-brand-600 text-brand-700 dark:text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                statusFilter === s
+                  ? 'bg-brand-500 text-white border-brand-500'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-brand-700'
               }`}
             >
-              {tab === 'ALL' ? 'All Assignments' : tab === 'PENDING' ? 'Pending' : 'Completed'}
+              {s === 'ALL' ? 'All' : s === 'NOT_SUBMITTED' ? 'Pending' : s === 'CONFIRMED' ? 'Submitted' : 'Overdue'}
+              <span className="ml-1 opacity-70">({statusCounts[s] || 0})</span>
+            </button>
+          ))}
+        </div>
+        {/* Type Filter */}
+        <div className="flex gap-1.5">
+          {['ALL', 'GROUP', 'INDIVIDUAL'].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`px-3 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                typeFilter === t
+                  ? 'bg-indigo-500 text-white border-indigo-500'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'
+              }`}
+            >
+              {t === 'ALL' ? 'All Types' : t}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Warning banner if not in group */}
-      {!group && (
-        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-between gap-3 text-amber-900 dark:text-amber-200">
-          <div className="flex items-center gap-3 text-xs">
-            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>
-              You currently do not have a group. Form a group in <strong>My Group</strong> so your group's submissions can be logged and verified.
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Assignments Cards Grid */}
-      {filteredAssignments.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredAssignments.map((assignment) => {
-            const isConfirmed = assignment.submissionStatus === 'CONFIRMED';
-            const isOverdue = assignment.submissionStatus === 'OVERDUE';
-            const dueDateObj = new Date(assignment.dueDate);
-            const formattedDate = dueDateObj.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            });
-
-            return (
-              <div
-                key={assignment.id}
-                className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
-              >
-                <div className="space-y-4">
-                  {/* Top badges */}
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge status={assignment.submissionStatus} />
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-100 dark:border-slate-700">
-                      {assignment.isGlobal ? 'All Groups' : 'Selective Assignment'}
-                    </span>
-                  </div>
-
-                  {/* Title & Description */}
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white hover:text-brand-600 dark:hover:text-brand-400 transition-colors">
-                      {assignment.title}
-                    </h3>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3 leading-relaxed">
-                      {assignment.description}
-                    </p>
-                  </div>
-
-                  {/* Meta details */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                      Due: <strong className={isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}>{formattedDate}</strong>
-                    </span>
-                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
-                      <Cloud className="w-3.5 h-3.5" />
-                      OneDrive Linked
-                    </span>
-                  </div>
-                </div>
-
-                {/* Actions & Status */}
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                  {/* OneDrive Link Button */}
-                  <a
-                    href={assignment.onedriveLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <span>Open OneDrive Submission Folder</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
-                  </a>
-
-                  {/* Two-step confirmation trigger or confirmed status */}
-                  {isConfirmed ? (
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-200 font-medium">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        <span>Submitted by {assignment.groupSubmission?.submittedBy?.name || 'Group'}</span>
-                      </div>
-                      <span className="text-[10px] text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900 px-2 py-0.5 rounded font-mono border border-emerald-200 dark:border-emerald-800">
-                        Locked
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleOpenConfirm(assignment)}
-                      className="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-glow transition-all flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <FileCheck className="w-4 h-4" />
-                      <span>Confirm Submission (2-Step Verification)</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+      {/* Assignment Cards */}
+      {filteredAssignments.length === 0 ? (
+        <div className="glass-card p-12 text-center animate-fade-in">
+          <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <h3 className="font-bold text-slate-600 dark:text-slate-400">No assignments found</h3>
+          <p className="text-xs text-slate-400 mt-1">Try changing your filter or search criteria.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-12 text-center shadow-xs">
-          <BookOpen className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-700 dark:text-slate-300">No assignments found</h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            {filter === 'SUBMITTED'
-              ? 'You have not submitted any assignments yet.'
-              : 'No pending assignments match your active filter.'}
-          </p>
+        <div className="space-y-3">
+          {filteredAssignments.map((asg, i) => (
+            <div
+              key={asg.id}
+              className={`glass-card glass-card-hover p-5 space-y-3 animate-fade-in-up stagger-${Math.min(i + 1, 8)}`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">{asg.title}</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 line-clamp-2">{asg.description}</p>
+                </div>
+                <StatusBadge status={asg.submissionStatus} size="sm" />
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <StatusBadge status={asg.submissionType || 'GROUP'} size="xs" />
+                {asg.course && (
+                  <Badge variant="brand">{asg.course.code || asg.course.name}</Badge>
+                )}
+                {asg.isGlobal === false && (
+                  <Badge variant="warning">Targeted</Badge>
+                )}
+                <CountdownTimer targetDate={asg.dueDate} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                <a
+                  href={asg.onedriveLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open OneDrive
+                </a>
+                {asg.submissionStatus !== 'CONFIRMED' ? (
+                  <button
+                    onClick={() => { setSelectedAssignment(asg); setConfirmModalOpen(true); }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all cursor-pointer"
+                  >
+                    <FileCheck className="w-3.5 h-3.5" />
+                    Submit
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-success-500">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Submitted
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* TWO-STEP SUBMISSION CONFIRMATION MODAL */}
-      <ConfirmSubmissionModal
-        isOpen={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
-        assignment={selectedAssignment}
-        group={group}
-        onSuccess={fetchData}
-      />
+      {/* Submission Modal */}
+      {confirmModalOpen && selectedAssignment && (
+        <ConfirmSubmissionModal
+          assignment={selectedAssignment}
+          isOpen={confirmModalOpen}
+          onClose={() => { setConfirmModalOpen(false); setSelectedAssignment(null); }}
+          onConfirmed={() => { setConfirmModalOpen(false); setSelectedAssignment(null); fetchAssignments(); }}
+        />
+      )}
     </div>
   );
 };

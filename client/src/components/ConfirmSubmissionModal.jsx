@@ -1,54 +1,44 @@
 import React, { useState } from 'react';
-import { Modal } from './Modal';
-import { ExternalLink, CheckCircle, ArrowLeft, AlertTriangle, Cloud } from 'lucide-react';
-import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { api } from '../services/api';
+import { AnimatedCheckmark } from './AnimatedCheckmark';
+import { StatusBadge } from './StatusBadge';
+import {
+  X, ExternalLink, FileCheck, Loader2, CheckCircle2, Shield, User,
+  AlertTriangle, Send, Clock,
+} from 'lucide-react';
 
-export const ConfirmSubmissionModal = ({
-  isOpen,
-  onClose,
-  assignment,
-  group,
-  onSuccess,
-}) => {
+export const ConfirmSubmissionModal = ({ assignment, isOpen, onClose, onConfirmed, onSubmissionSuccess }) => {
   const { user } = useAuth();
   const toast = useToast();
-
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // 1: Review, 2: Confirm, 3: Success
   const [submissionNote, setSubmissionNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  if (!assignment) return null;
+  if (!isOpen || !assignment) return null;
 
-  const handleResetAndClose = () => {
-    setStep(1);
-    setSubmissionNote('');
-    onClose();
-  };
+  const isIndividual = assignment.submissionType === 'INDIVIDUAL';
+  const isGroup = assignment.submissionType === 'GROUP' || !assignment.submissionType;
 
-  const handleStep1Proceed = () => {
-    setStep(2);
-  };
-
-  const handleFinalConfirm = async () => {
-    if (!group) {
-      toast.error('You must be in a group to submit assignments.');
-      return;
-    }
-
+  const handleConfirm = async () => {
     setLoading(true);
+    setError('');
     try {
       await api.confirmSubmission(user.id, {
         assignmentId: assignment.id,
         confirmed: true,
-        submissionNote: submissionNote.trim(),
+        submissionNote: submissionNote.trim() || null,
       });
-
+      setStep(3);
       toast.success(`Submission confirmed for "${assignment.title}"!`);
-      if (onSuccess) await onSuccess();
-      handleResetAndClose();
+      setTimeout(() => {
+        const callback = onConfirmed || onSubmissionSuccess || onClose;
+        callback?.();
+      }, 2000);
     } catch (err) {
+      setError(err.message || 'Failed to confirm submission');
       toast.error(err.message || 'Failed to confirm submission');
     } finally {
       setLoading(false);
@@ -56,177 +46,168 @@ export const ConfirmSubmissionModal = ({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleResetAndClose}
-      title={step === 1 ? 'Two-Step Submission Verification' : 'Final Submission Confirmation'}
-      subtitle={`Assignment: ${assignment.title}`}
-      maxWidth="max-w-xl"
-    >
-      {step === 1 ? (
-        <div className="space-y-6">
-          {/* Step 1 banner */}
-          <div className="flex items-center justify-between p-3.5 bg-indigo-50/70 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-800/60 rounded-xl">
-            <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs font-bold">
-                1
-              </span>
-              <div>
-                <div className="text-xs font-semibold text-brand-900 dark:text-indigo-200 uppercase tracking-wider">
-                  Step 1 of 2
-                </div>
-                <div className="text-sm font-medium text-brand-700 dark:text-indigo-300">
-                  Verify OneDrive Upload
-                </div>
-              </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-lg border border-slate-200/80 dark:border-slate-800 animate-scale-in overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-500 flex items-center justify-center text-white">
+              <FileCheck className="w-4 h-4" />
             </div>
-            <span className="text-xs font-medium bg-white dark:bg-slate-900 px-2.5 py-1 rounded-full text-brand-600 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-              Group: {group?.name || 'Your Group'}
-            </span>
-          </div>
-
-          {/* OneDrive link launch card */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Cloud className="w-4 h-4 text-blue-500" />
-                OneDrive Submission Folder
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">External Upload</span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Confirm Submission</h3>
+              <p className="text-[11px] text-slate-400">
+                {isIndividual ? 'Individual Submission' : 'Group Submission'}
+              </p>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Ensure you have placed your group's source code, documentation, and demo links inside the professor's shared OneDrive directory.
-            </p>
-            <a
-              href={assignment.onedriveLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm cursor-pointer"
-            >
-              <span>Open OneDrive Folder</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
           </div>
-
-          {/* Optional Submission Note */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-              Submission Notes (Optional)
-            </label>
-            <textarea
-              rows={3}
-              value={submissionNote}
-              onChange={(e) => setSubmissionNote(e.target.value)}
-              placeholder="e.g. Uploaded final zip file v2.1 including test coverage reports and benchmark video."
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
-            />
-          </div>
-
-          {/* Step 1 Action */}
-          <div className="pt-2 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={handleResetAndClose}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleStep1Proceed}
-              className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm flex items-center gap-2 hover:shadow-glow cursor-pointer"
-            >
-              <span>Yes, I have submitted</span>
-              <span className="text-xs opacity-75">→ Step 2</span>
-            </button>
-          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+            <X className="w-4 h-4 text-slate-400" />
+          </button>
         </div>
-      ) : (
-        /* STEP 2: FINAL CONFIRMATION */
-        <div className="space-y-6 animate-fadeIn">
-          <div className="flex items-center justify-between p-3.5 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
-            <div className="flex items-center gap-3">
-              <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-                2
-              </span>
+
+        {/* Step Progress */}
+        <div className="px-6 py-3 flex items-center gap-2">
+          {[1, 2, 3].map((s) => (
+            <React.Fragment key={s}>
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                step >= s
+                  ? step === 3 && s === 3 ? 'bg-success-500 text-white' : 'bg-brand-500 text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+              }`}>
+                {step > s ? <CheckCircle2 className="w-4 h-4" /> : s}
+              </div>
+              {s < 3 && <div className={`flex-1 h-0.5 rounded-full transition-all ${step > s ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`} />}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="px-6 py-4">
+          {/* Step 1: Review */}
+          {step === 1 && (
+            <div className="space-y-4 animate-fade-in">
               <div>
-                <div className="text-xs font-semibold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
-                  Step 2 of 2
-                </div>
-                <div className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                  Confirm and Record Group Submission
-                </div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">{assignment.title}</h4>
+                <p className="text-xs text-slate-500 line-clamp-2">{assignment.description}</p>
               </div>
-            </div>
-            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
 
-          <div className="p-4 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/50 rounded-xl flex gap-3 text-amber-900 dark:text-amber-200">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-xs leading-relaxed">
-              <span className="font-bold">Important:</span> You are locking in this submission on behalf of all members in{' '}
-              <span className="font-semibold underline">{group?.name || 'your group'}</span>. The professor will immediately see your confirmation timestamp and note on the dashboard.
-            </div>
-          </div>
-
-          <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 space-y-2 text-xs text-slate-700 dark:text-slate-300">
-            <div className="flex justify-between">
-              <span className="text-slate-500 dark:text-slate-400">Confirmed by:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{user?.name} ({user?.email})</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500 dark:text-slate-400">Target Group:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{group?.name}</span>
-            </div>
-            {submissionNote && (
-              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400 block mb-1">Attached Note:</span>
-                <p className="italic text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 p-2 rounded border border-slate-100 dark:border-slate-800">
-                  "{submissionNote}"
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="pt-2 flex justify-between items-center border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => setStep(1)}
-              className="px-3.5 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleResetAndClose}
-                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleFinalConfirm}
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
-              >
-                {loading ? (
-                  <span>Recording...</span>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Confirm Submission</span>
-                  </>
+              <div className="flex items-center gap-3 flex-wrap">
+                <StatusBadge status={assignment.submissionType || 'GROUP'} size="sm" />
+                {assignment.course && (
+                  <span className="text-xs font-semibold text-brand-500">{assignment.course?.code}</span>
                 )}
+                <div className="flex items-center gap-1 text-xs text-slate-500">
+                  <Clock className="w-3 h-3" />
+                  Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                </div>
+              </div>
+
+              <a
+                href={assignment.onedriveLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors text-xs font-semibold"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Open OneDrive Submission Folder
+              </a>
+
+              {isGroup && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                  <Shield className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    <strong>Group assignment:</strong> Only the group leader can confirm submission. This will be reflected for all group members.
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={() => setStep(2)}
+                className="w-full py-3 bg-brand-600 text-white rounded-xl text-sm font-bold hover:bg-brand-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                Yes, I have uploaded to OneDrive
+                <CheckCircle2 className="w-4 h-4" />
               </button>
             </div>
-          </div>
+          )}
+
+          {/* Step 2: Final Confirm */}
+          {step === 2 && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center mx-auto mb-3">
+                  <Send className="w-5 h-5 text-brand-500" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Final Confirmation</h4>
+                <p className="text-xs text-slate-500 mt-1">Add an optional note and confirm your submission.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                  Submission Note (optional)
+                </label>
+                <textarea
+                  value={submissionNote}
+                  onChange={(e) => setSubmissionNote(e.target.value)}
+                  placeholder="e.g., Uploaded complete source code and documentation..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-3 py-2.5 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-all placeholder:text-slate-400 resize-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-1 text-right">{submissionNote.length}/500</p>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-danger-50 dark:bg-danger-500/10 border border-danger-200 dark:border-danger-500/20 animate-fade-in">
+                  <AlertTriangle className="w-4 h-4 text-danger-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-danger-600 dark:text-danger-400">{error}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-success-500 text-white rounded-xl text-sm font-bold hover:bg-success-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" /><span>Submitting...</span></>
+                  ) : (
+                    <><span>Confirm Submission</span><CheckCircle2 className="w-4 h-4" /></>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Success */}
+          {step === 3 && (
+            <div className="text-center space-y-4 py-6 animate-fade-in">
+              <AnimatedCheckmark size={72} />
+              <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                Submission Confirmed! 🎉
+              </h4>
+              <p className="text-sm text-slate-500">
+                {isGroup
+                  ? 'Your group\'s submission has been recorded. All group members will see this as confirmed.'
+                  : 'Your individual submission has been recorded successfully.'}
+              </p>
+            </div>
+          )}
         </div>
-      )}
-    </Modal>
+      </div>
+    </div>
   );
 };
+
+export default ConfirmSubmissionModal;

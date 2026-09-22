@@ -8,6 +8,7 @@ import groupsRoutes from './routes/groups.routes.js';
 import assignmentsRoutes from './routes/assignments.routes.js';
 import submissionsRoutes from './routes/submissions.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+import coursesRoutes from './routes/courses.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.use('/api/v1/groups', groupsRoutes);
 app.use('/api/v1/assignments', assignmentsRoutes);
 app.use('/api/v1/submissions', submissionsRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/courses', coursesRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {
@@ -58,4 +60,5 @@ app.listen(PORT, () => {
   console.log(`🚀 JoinEazy Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
 
+// Server export for testing
 export default app;

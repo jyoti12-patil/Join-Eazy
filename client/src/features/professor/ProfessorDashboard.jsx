@@ -6,69 +6,47 @@ import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Badge } from '../../components/Badge';
+import { StatusBadge } from '../../components/StatusBadge';
+import { SkeletonDashboard } from '../../components/SkeletonLoader';
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from 'recharts';
 import {
-  BarChart3,
-  Users,
-  BookOpen,
-  CheckCircle2,
-  TrendingUp,
-  PlusCircle,
-  ExternalLink,
-  Clock,
-  Sparkles,
-  ArrowRight,
+  BarChart3, Users, BookOpen, CheckCircle2, TrendingUp, PlusCircle,
+  ExternalLink, Clock, Sparkles, ArrowRight, GraduationCap, Layers,
 } from 'lucide-react';
 
 export const ProfessorDashboard = () => {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const toast = useToast();
-
   const [analytics, setAnalytics] = useState(null);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await api.getAnalytics();
-        setAnalytics(res);
+        const [analyticsRes, coursesRes] = await Promise.all([
+          api.getAnalytics(),
+          api.getCourses(user),
+        ]);
+        setAnalytics(analyticsRes);
+        setCourses(coursesRes || []);
       } catch (err) {
         toast.error('Failed to load analytics dashboard');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchAnalytics();
+    fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <SkeletonDashboard />;
 
-  const {
-    summary = {},
-    groupPerformance = [],
-    assignmentStats = [],
-    recentSubmissions = [],
-  } = analytics || {};
+  const { summary = {}, groupPerformance = [], assignmentStats = [], courseStats = [], recentSubmissions = [] } = analytics || {};
 
-  // Formatted data for Recharts
   const assignmentChartData = assignmentStats.map((a) => ({
     name: a.title.length > 15 ? `${a.title.slice(0, 15)}...` : a.title,
     Submitted: a.submittedCount,
@@ -79,282 +57,212 @@ export const ProfessorDashboard = () => {
     name: g.name.length > 12 ? `${g.name.slice(0, 12)}...` : g.name,
     Completed: g.completedCount,
     Pending: g.pendingCount,
-    rate: g.completionRate,
   }));
+
+  const statCards = [
+    { label: 'Total Courses', value: summary.totalCourses || courses.length, icon: GraduationCap, color: 'from-violet-500 to-purple-600' },
+    { label: 'Assignments', value: summary.totalAssignments, icon: BookOpen, color: 'from-brand-500 to-indigo-600' },
+    { label: 'Groups', value: summary.totalGroups, icon: Users, color: 'from-cyan-500 to-blue-600' },
+    { label: 'Students', value: summary.totalStudents, icon: TrendingUp, color: 'from-emerald-500 to-green-600' },
+    { label: 'Submissions', value: summary.totalSubmissions, icon: CheckCircle2, color: 'from-amber-500 to-orange-600' },
+    { label: 'Completion Rate', value: `${summary.overallRate || 0}%`, icon: BarChart3, color: 'from-pink-500 to-rose-600' },
+  ];
+
+  const chartColors = {
+    submitted: isDark ? '#818cf8' : '#6366f1',
+    pending: isDark ? '#475569' : '#cbd5e1',
+  };
 
   return (
     <div className="w-full px-4 sm:px-6 py-8 space-y-8">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold uppercase tracking-wider backdrop-blur-sm text-brand-300">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Professor Admin Dashboard</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Cohort Analytics & Submission Insights
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300">
-            Welcome back, {user?.name}. Monitor student groups, review OneDrive submission confirmations, and measure class-wide performance.
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            to="/professor/assignments"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md transition-all shrink-0 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Post Assignment</span>
-          </Link>
-          <Link
-            to="/professor/submissions"
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all shrink-0 cursor-pointer"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Submission Log</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Assignments</span>
-            <BookOpen className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {summary.totalAssignments || 0}
-          </div>
-          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Coursework published</div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Active Groups</span>
-            <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {summary.totalGroups || 0}
-          </div>
-          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Formed by students</div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Enrolled Students</span>
-            <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {summary.totalStudents || 0}
-          </div>
-          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">In this cohort</div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Confirmed Work</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-            {summary.totalSubmissions || 0}
-          </div>
-          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Verified on OneDrive</div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Completion Rate</span>
-            <TrendingUp className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-          </div>
-          <div className="text-2xl font-black text-brand-600 dark:text-brand-400 font-mono">
-            {summary.overallRate || 0}%
-          </div>
-          <div className="mt-2">
-            <ProgressBar percentage={summary.overallRate || 0} showLabel={false} height="h-2" />
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart 1: Assignment Completion */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Assignment Completion Breakdown
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Submitted vs Pending groups per assignment
-              </p>
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden animate-fade-in">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Professor Dashboard</span>
             </div>
-            <BarChart3 className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Welcome, {user.name}
+            </h1>
+            <p className="text-white/70 text-sm">
+              Monitor your courses, track submissions, and manage assignments.
+            </p>
           </div>
-
-          <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={assignmentChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#f1f5f9'} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDark ? '#0f172a' : '#ffffff',
-                    borderRadius: '12px',
-                    border: `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
-                    fontSize: '12px',
-                    color: isDark ? '#f8fafc' : '#0f172a',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="Submitted" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Pending" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 2: Group Performance */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4 transition-colors">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Group Performance Comparison
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Coursework completed by each student team
-              </p>
-            </div>
-            <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-          </div>
-
-          <div className="h-64 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={groupChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#f1f5f9'} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: isDark ? '#94a3b8' : '#64748b' }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDark ? '#0f172a' : '#ffffff',
-                    borderRadius: '12px',
-                    border: `1px solid ${isDark ? '#1e293b' : '#e2e8f0'}`,
-                    fontSize: '12px',
-                    color: isDark ? '#f8fafc' : '#0f172a',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Bar dataKey="Completed" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Pending" fill={isDark ? '#334155' : '#cbd5e1'} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Submissions Feed & Group Standings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Group Performance List */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4 transition-colors">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Student Teams Progress Overview
-            </h3>
+          <div className="flex gap-2 shrink-0">
             <Link
-              to="/professor/submissions"
-              className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1"
+              to="/professor/assignments"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white rounded-xl text-xs font-bold transition-all"
             >
-              <span>View full log</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <PlusCircle className="w-4 h-4" />
+              New Assignment
             </Link>
           </div>
+        </div>
+      </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {groupPerformance.map((gp) => (
-              <div key={gp.id} className="py-3.5 flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white">
-                      {gp.name}
-                    </span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
-                      ({gp.memberCount} members)
-                    </span>
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {statCards.map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.label} className={`glass-card glass-card-hover p-4 space-y-2 animate-fade-in-up stagger-${i + 1}`}>
+              <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${stat.color} flex items-center justify-center text-white shadow-md`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-xl font-extrabold text-slate-800 dark:text-slate-200">{stat.value}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Courses Section */}
+      {courses.length > 0 && (
+        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-brand-500" />
+              My Courses
+            </h2>
+            <Link to="/professor/courses" className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline">
+              Manage Courses →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course, i) => (
+              <div key={course.id} className={`glass-card glass-card-hover p-5 space-y-3 animate-fade-in-up stagger-${i + 1}`}>
+                <div className="flex items-start justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+                    <BookOpen className="w-5 h-5" />
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    Leader:{' '}
-                    <strong className="text-slate-700 dark:text-slate-300">
-                      {gp.members.find((m) => m.role === 'LEADER')?.name || 'Student'}
-                    </strong>
+                  <Badge variant="brand">{course.code}</Badge>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">{course.name}</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 py-1.5">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{course._count?.enrollments || 0}</p>
+                    <p className="text-[10px] text-slate-400">Students</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 py-1.5">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{course._count?.assignments || 0}</p>
+                    <p className="text-[10px] text-slate-400">Assignments</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 py-1.5">
+                    <p className="text-sm font-bold text-success-500">{course.completionRate || 0}%</p>
+                    <p className="text-[10px] text-slate-400">Complete</p>
                   </div>
                 </div>
+                <ProgressBar value={course.completionRate || 0} max={100} size="sm" showPercentage={false} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                <div className="w-48 space-y-1 text-right">
-                  <div className="text-xs font-bold font-mono text-slate-700 dark:text-slate-300">
-                    {gp.completedCount} / {gp.assignedCount} Completed ({gp.completionRate}%)
-                  </div>
-                  <ProgressBar
-                    percentage={gp.completionRate}
-                    showLabel={false}
-                    height="h-2"
-                  />
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Assignment Submissions Chart */}
+        {assignmentChartData.length > 0 && (
+          <div className="glass-card p-5 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-brand-500" />
+              Submissions by Assignment
+            </h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={assignmentChartData} barSize={20} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#f1f5f9'} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                  <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                  <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#f1f5f9' : '#0f172a' }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Submitted" fill={chartColors.submitted} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Pending" fill={chartColors.pending} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Group Performance Chart */}
+        {groupChartData.length > 0 && (
+          <div className="glass-card p-5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-cyan-500" />
+              Group Performance
+            </h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={groupChartData} barSize={20} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#f1f5f9'} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                  <YAxis tick={{ fontSize: 10, fill: isDark ? '#94a3b8' : '#64748b' }} />
+                  <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#f1f5f9' : '#0f172a' }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Completed" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Pending" fill={chartColors.pending} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Activity Feed */}
+      {recentSubmissions.length > 0 && (
+        <div className="glass-card p-5 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
+          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-500" />
+            Recent Submissions
+          </h3>
+          <div className="space-y-2">
+            {recentSubmissions.map((sub, i) => (
+              <div key={sub.id || i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors animate-fade-in-up stagger-${i + 1}`}>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-success-400 to-emerald-500 flex items-center justify-center text-white">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {sub.submittedBy?.name || 'Student'} <span className="font-normal text-slate-400">submitted</span> {sub.assignment?.title}
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    {sub.group?.name && `${sub.group.name} · `}
+                    {sub.confirmedAt && new Date(sub.confirmedAt).toLocaleString()}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
 
-        {/* Right Col: Recent Submissions Activity Log */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4 transition-colors">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            Recent Verifications
-          </h3>
-
-          <div className="space-y-3">
-            {recentSubmissions.length > 0 ? (
-              recentSubmissions.map((sub) => {
-                const confirmedTime = new Date(sub.confirmedAt).toLocaleDateString(
-                  'en-US',
-                  {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }
-                );
-
-                return (
-                  <div
-                    key={sub.id}
-                    className="p-3 bg-slate-50/70 dark:bg-slate-950/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1 text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {sub.group.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                        {confirmedTime}
-                      </span>
-                    </div>
-                    <div className="text-slate-600 dark:text-slate-400 font-medium truncate">
-                      {sub.assignment.title}
-                    </div>
-                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-semibold">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>Verified by {sub.submittedBy.name}</span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-500">
-                No submissions recorded yet.
+      {/* Quick Links */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { to: '/professor/assignments', icon: BookOpen, label: 'Manage Assignments', color: 'from-brand-500 to-indigo-600' },
+          { to: '/professor/submissions', icon: CheckCircle2, label: 'Submission Tracker', color: 'from-emerald-500 to-green-600' },
+          { to: '/professor/groups', icon: Users, label: 'View All Groups', color: 'from-cyan-500 to-blue-600' },
+        ].map((link) => {
+          const Icon = link.icon;
+          return (
+            <Link key={link.to} to={link.to} className="glass-card glass-card-hover p-4 flex items-center gap-3 group">
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${link.color} flex items-center justify-center text-white shadow-md`}>
+                <Icon className="w-5 h-5" />
               </div>
-            )}
-          </div>
-        </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{link.label}</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-brand-500 group-hover:translate-x-1 transition-all" />
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

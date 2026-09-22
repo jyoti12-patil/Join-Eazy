@@ -102,7 +102,9 @@ export const GroupOverview = () => {
                           </div>
                         </div>
                       </div>
-                      <Badge status={m.role} size="xs" />
+                      <Badge variant={m.role === 'LEADER' ? 'warning' : 'default'}>
+                        {m.role === 'LEADER' ? '👑 Leader' : 'Member'}
+                      </Badge>
                     </div>
                   ))}
                 </div>

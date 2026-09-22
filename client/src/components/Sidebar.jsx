@@ -7,6 +7,7 @@ import {
   CheckSquare,
   Users,
   Layers,
+  GraduationCap,
   X,
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }
 
   const adminLinks = [
     { label: 'Dashboard & Analytics', to: '/professor', icon: BarChart3 },
+    { label: 'Course Management', to: '/professor/courses', icon: GraduationCap },
     { label: 'Manage Assignments', to: '/professor/assignments', icon: BookOpen },
     { label: 'Submission Tracker', to: '/professor/submissions', icon: CheckSquare },
     { label: 'All Groups', to: '/professor/groups', icon: Users },
@@ -146,3 +148,5 @@ export const Sidebar = ({ isCollapsed, toggleCollapse, mobileOpen, closeMobile }
     </>
   );
 };
+
+export default Sidebar;

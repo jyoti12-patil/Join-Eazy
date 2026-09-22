@@ -170,7 +170,7 @@ export const GroupManager = () => {
                     <h2 className="text-xl font-black text-slate-900 dark:text-white">
                       {group.name}
                     </h2>
-                    <Badge status="ACTIVE" text="Active Group" size="xs" />
+                    <Badge variant="success">Active Group</Badge>
                   </div>
                   <div className="flex items-center gap-4 mt-2 text-xs text-slate-500 dark:text-slate-400">
                     <span className="flex items-center gap-1">
@@ -239,7 +239,9 @@ export const GroupManager = () => {
                                   You
                                 </span>
                               )}
-                              <Badge status={m.role} size="xs" />
+                              <Badge variant={m.role === 'LEADER' ? 'warning' : 'default'}>
+                                {m.role === 'LEADER' ? '👑 Leader' : 'Member'}
+                              </Badge>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                               <span className="flex items-center gap-1">

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,6 +15,7 @@
 
   body {
     @apply bg-slate-50 text-slate-900 selection:bg-brand-500 selection:text-white transition-colors duration-150;
+    font-feature-settings: 'cv11', 'ss01';
   }
 
   html.dark body {
@@ -20,13 +23,74 @@
   }
 }
 
-@layer utilities {
+@layer components {
   .glass-card {
     @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-white/40 dark:border-slate-800/80 shadow-glass rounded-2xl;
   }
   .glass-card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+    @apply transition-all duration-300 hover:shadow-card-hover hover:-translate-y-1;
   }
+
+  /* Staggered entrance animations */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+  .stagger-7 { animation-delay: 0.35s; }
+  .stagger-8 { animation-delay: 0.4s; }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 dark:bg-slate-800 rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Progress bar animated fill */
+  .progress-bar-fill {
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Animated SVG checkmark */
+  .checkmark-circle {
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    animation: drawCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  }
+  .checkmark-check {
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: drawCheck 0.4s 0.4s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  }
+
+  /* Floating shapes */
+  .floating-shape {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.08;
+  }
+}
+
+@keyframes drawCircle {
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes drawCheck {
+  100% { stroke-dashoffset: 0; }
 }
 
 /* Custom scrollbars */

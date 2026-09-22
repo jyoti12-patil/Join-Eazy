@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ProgressBar } from '../../components/ProgressBar';
-import { Badge } from '../../components/Badge';
+import { StatusBadge } from '../../components/StatusBadge';
 import {
   Trophy,
   Award,
@@ -86,9 +86,10 @@ export const GroupProgressTracker = () => {
             </p>
             <div className="pt-2 max-w-md">
               <ProgressBar
-                percentage={stats.percentage}
-                showLabel={false}
-                height="h-3.5"
+                value={stats.completed}
+                max={stats.total}
+                showPercentage={false}
+                size="lg"
               />
             </div>
           </div>
@@ -245,7 +246,7 @@ export const GroupProgressTracker = () => {
                       {dueDateFormatted}
                     </td>
                     <td className="py-4 px-4">
-                      <Badge status={sub.status} />
+                      <StatusBadge status={sub.status} />
                     </td>
                     <td className="py-4 px-4 font-mono text-slate-600 dark:text-slate-400">
                       {confirmedDateFormatted}

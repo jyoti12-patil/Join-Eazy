@@ -12,18 +12,30 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       try {
         const storedUser = localStorage.getItem('joineazy_user');
-        if (storedUser) {
+        const storedToken = localStorage.getItem('joineazy_token');
+        if (storedUser && storedToken) {
           const parsed = JSON.parse(storedUser);
-          setUser(parsed);
-          // Refresh user data if possible
-          const refreshed = await api.getMe(parsed);
-          if (refreshed) {
-            setUser(refreshed);
-            localStorage.setItem('joineazy_user', JSON.stringify(refreshed));
+          try {
+            const refreshed = await api.getMe(parsed);
+            if (refreshed) {
+              setUser(refreshed);
+              localStorage.setItem('joineazy_user', JSON.stringify(refreshed));
+            } else {
+              logout();
+            }
+          } catch (err) {
+            if (err.response?.status === 401 || err.message?.includes('401')) {
+              logout();
+            } else {
+              setUser(parsed);
+            }
           }
+        } else {
+          setUser(null);
         }
       } catch (e) {
         console.error('Error initializing auth:', e);
+        logout();
       } finally {
         setLoading(false);
       }

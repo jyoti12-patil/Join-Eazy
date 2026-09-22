@@ -2,7 +2,7 @@ import prisma from '../config/db.js';
 
 export const createAssignment = async (req, res, next) => {
   try {
-    const { title, description, dueDate, onedriveLink, isGlobal = true, groupIds = [] } = req.body;
+    const { title, description, dueDate, onedriveLink, isGlobal = true, groupIds = [], submissionType = 'GROUP', courseId } = req.body;
     const adminId = req.user.id;
 
     const assignment = await prisma.$transaction(async (tx) => {
@@ -13,7 +13,9 @@ export const createAssignment = async (req, res, next) => {
           dueDate: new Date(dueDate),
           onedriveLink,
           isGlobal: Boolean(isGlobal),
+          submissionType,
           createdById: adminId,
+          courseId: courseId || null,
           ...(isGlobal === false && groupIds.length > 0 && {
             assignmentGroups: {
               create: groupIds.map((groupId) => ({
@@ -40,6 +42,13 @@ export const createAssignment = async (req, res, next) => {
               email: true,
             },
           },
+          course: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
         },
       });
 
@@ -59,6 +68,7 @@ export const createAssignment = async (req, res, next) => {
 export const getAllAssignments = async (req, res, next) => {
   try {
     const user = req.user;
+    const { courseId } = req.query;
 
     // If student, find student's group
     let studentGroupId = null;
@@ -69,31 +79,41 @@ export const getAllAssignments = async (req, res, next) => {
       studentGroupId = membership?.groupId || null;
     }
 
-    const assignments = await prisma.assignment.findMany({
-      where: {
-        ...(user.role === 'STUDENT'
-          ? {
-              OR: [
-                { isGlobal: true },
-                ...(studentGroupId
-                  ? [
-                      {
-                        assignmentGroups: {
-                          some: { groupId: studentGroupId },
-                        },
+    const whereClause = {
+      ...(courseId && { courseId }),
+      ...(user.role === 'STUDENT'
+        ? {
+            OR: [
+              { isGlobal: true },
+              ...(studentGroupId
+                ? [
+                    {
+                      assignmentGroups: {
+                        some: { groupId: studentGroupId },
                       },
-                    ]
-                  : []),
-              ],
-            }
-          : {}),
-      },
+                    },
+                  ]
+                : []),
+            ],
+          }
+        : {}),
+    };
+
+    const assignments = await prisma.assignment.findMany({
+      where: whereClause,
       include: {
         createdBy: {
           select: {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        course: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
         assignmentGroups: {
@@ -107,9 +127,16 @@ export const getAllAssignments = async (req, res, next) => {
           },
         },
         submissions: {
-          ...(studentGroupId
+          ...(user.role === 'STUDENT'
             ? {
-                where: { groupId: studentGroupId },
+                where: studentGroupId
+                  ? {
+                      OR: [
+                        { groupId: studentGroupId },
+                        { submittedById: user.id, groupId: null },
+                      ],
+                    }
+                  : { submittedById: user.id },
               }
             : {}),
           include: {
@@ -141,22 +168,30 @@ export const getAllAssignments = async (req, res, next) => {
     // Add formatted submission status for student's group
     const enrichedAssignments = assignments.map((assignment) => {
       let groupSubmission = null;
-      if (studentGroupId && assignment.submissions.length > 0) {
-        groupSubmission = assignment.submissions[0];
+      let individualSubmission = null;
+
+      if (user.role === 'STUDENT') {
+        if (assignment.submissionType === 'GROUP' && studentGroupId && assignment.submissions.length > 0) {
+          groupSubmission = assignment.submissions[0];
+        } else if (assignment.submissionType === 'INDIVIDUAL' && assignment.submissions.length > 0) {
+          individualSubmission = assignment.submissions.find((s) => s.submittedById === user.id) || null;
+        }
       }
 
       const isOverdue = new Date(assignment.dueDate) < new Date();
+      const relevantSub = groupSubmission || individualSubmission;
 
       return {
         ...assignment,
-        submissionStatus: groupSubmission
-          ? groupSubmission.confirmed
+        submissionStatus: relevantSub
+          ? relevantSub.confirmed
             ? 'CONFIRMED'
             : 'PENDING_CONFIRMATION'
           : isOverdue
           ? 'OVERDUE'
           : 'NOT_SUBMITTED',
         groupSubmission,
+        individualSubmission,
       };
     });
 
@@ -190,6 +225,13 @@ export const getAssignmentById = async (req, res, next) => {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        course: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
           },
         },
         assignmentGroups: {
@@ -252,8 +294,12 @@ export const getAssignmentById = async (req, res, next) => {
     }
 
     let myGroupSubmission = null;
-    if (studentGroupId) {
+    let myIndividualSubmission = null;
+    if (studentGroupId && assignment.submissionType === 'GROUP') {
       myGroupSubmission = assignment.submissions.find((s) => s.groupId === studentGroupId) || null;
+    }
+    if (assignment.submissionType === 'INDIVIDUAL') {
+      myIndividualSubmission = assignment.submissions.find((s) => s.submittedById === user.id) || null;
     }
 
     return res.status(200).json({
@@ -261,6 +307,7 @@ export const getAssignmentById = async (req, res, next) => {
       data: {
         assignment,
         myGroupSubmission,
+        myIndividualSubmission,
         userGroupId: studentGroupId,
       },
     });
@@ -272,7 +319,7 @@ export const getAssignmentById = async (req, res, next) => {
 export const updateAssignment = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, description, dueDate, onedriveLink, isGlobal, groupIds } = req.body;
+    const { title, description, dueDate, onedriveLink, isGlobal, groupIds, submissionType, courseId } = req.body;
 
     const existing = await prisma.assignment.findUnique({ where: { id } });
     if (!existing) {
@@ -307,6 +354,8 @@ export const updateAssignment = async (req, res, next) => {
           ...(dueDate && { dueDate: new Date(dueDate) }),
           ...(onedriveLink && { onedriveLink }),
           ...(isGlobal !== undefined && { isGlobal: Boolean(isGlobal) }),
+          ...(submissionType && { submissionType }),
+          ...(courseId !== undefined && { courseId: courseId || null }),
         },
         include: {
           assignmentGroups: {
@@ -318,6 +367,9 @@ export const updateAssignment = async (req, res, next) => {
           },
           createdBy: {
             select: { id: true, name: true, email: true },
+          },
+          course: {
+            select: { id: true, name: true, code: true },
           },
         },
       });

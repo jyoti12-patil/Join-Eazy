@@ -4,20 +4,14 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ProgressBar } from '../../components/ProgressBar';
-import { Badge } from '../../components/Badge';
+import { Badge, MilestoneBadge, getMilestones } from '../../components/Badge';
+import { StatusBadge } from '../../components/StatusBadge';
+import { CountdownTimer } from '../../components/CountdownTimer';
+import { SkeletonDashboard } from '../../components/SkeletonLoader';
 import { ConfirmSubmissionModal } from '../../components/ConfirmSubmissionModal';
 import {
-  Users,
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
-  ExternalLink,
-  PlusCircle,
-  FileCheck,
-  Award,
-  Sparkles,
-  Calendar,
+  Users, BookOpen, CheckCircle2, Clock, ArrowRight, ExternalLink,
+  PlusCircle, FileCheck, Award, Sparkles, Calendar, GraduationCap, Layers
 } from 'lucide-react';
 
 export const StudentDashboard = () => {
@@ -26,25 +20,25 @@ export const StudentDashboard = () => {
 
   const [groupData, setGroupData] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [progress, setProgress] = useState({ total: 0, completed: 0, percentage: 0 });
   const [loading, setLoading] = useState(true);
-
-  // Modal
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [groupRes, asgRes, progressRes] = await Promise.all([
+      const [groupRes, asgRes, progressRes, coursesRes] = await Promise.all([
         api.getMyGroup(user.id),
         api.getAssignments(user),
         api.getMyGroupSubmissions(user.id),
+        api.getCourses(user),
       ]);
-
       setGroupData(groupRes);
       setAssignments(asgRes || []);
       setProgress(progressRes?.stats || { total: 0, completed: 0, percentage: 0 });
+      setCourses(coursesRes || []);
     } catch (err) {
       toast.error('Failed to load dashboard');
     } finally {
@@ -52,272 +46,233 @@ export const StudentDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
+  useEffect(() => { if (user) fetchDashboardData(); }, [user]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  if (loading) return <SkeletonDashboard />;
 
   const group = groupData?.group;
+  const groupRole = groupData?.role;
   const pendingAssignments = assignments.filter((a) => a.submissionStatus !== 'CONFIRMED');
+  const milestones = getMilestones(progress.completed, progress.total);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   return (
     <div className="w-full px-4 sm:px-6 py-8 space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-brand-600 to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 space-y-2">
+      <div className="bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden animate-fade-in">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+        <div className="relative z-10 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Student Collaboration Workspace</span>
+            <span>Student Workspace</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Welcome, {user?.name}!
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            {getGreeting()}, {user.name?.split(' ')[0]}!
           </h1>
-          <p className="text-xs sm:text-sm text-brand-100 max-w-xl">
-            Manage your project team, access OneDrive submission repositories, and track your group's assignment deadlines.
+          <p className="text-white/70 text-sm max-w-lg">
+            {group
+              ? `You're part of "${group.name}" with ${group.members?.length || 0} members. Keep up the great work!`
+              : 'You haven\'t joined a group yet. Create or join one to start collaborating!'}
           </p>
-        </div>
-      </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Group Status */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>My Group</span>
-            <Users className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-          </div>
-          <div className="text-lg font-black text-slate-900 dark:text-white truncate">
-            {group ? group.name : 'No Group'}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {group ? (
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                {group.members.length} / {group.maxMembers} Members
-              </span>
-            ) : (
-              <Link to="/student/groups" className="text-brand-600 dark:text-brand-400 hover:underline font-bold">
-                Create or join a group →
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Card 2: Assignments Pending */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Pending Submissions</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {pendingAssignments.length}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            out of {assignments.length} total assigned
-          </div>
-        </div>
-
-        {/* Card 3: Completed Submissions */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Confirmed Work</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {progress.completed}
-          </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            verified on OneDrive
-          </div>
-        </div>
-
-        {/* Card 4: Progress Rate */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs transition-colors">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
-            <span>Completion Rate</span>
-            <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {progress.percentage}%
-          </div>
-          <div className="mt-2">
-            <ProgressBar percentage={progress.percentage} showLabel={false} height="h-2" />
+          {/* Quick Stats */}
+          <div className="flex flex-wrap gap-3 mt-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm">
+              <BookOpen className="w-4 h-4" />
+              <span className="text-sm font-bold">{progress.total}</span>
+              <span className="text-xs text-white/70">Assignments</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+              <span className="text-sm font-bold">{progress.completed}</span>
+              <span className="text-xs text-white/70">Completed</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm">
+              <Award className="w-4 h-4 text-amber-300" />
+              <span className="text-sm font-bold">{progress.percentage}%</span>
+              <span className="text-xs text-white/70">Progress</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Pending Action & Group Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Next Action Assignment */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Milestones */}
+      {milestones.length > 0 && (
+        <div className="flex flex-wrap gap-2 animate-fade-in-up">
+          {milestones.map((m) => (
+            <MilestoneBadge key={m} type={m} size="md" />
+          ))}
+        </div>
+      )}
+
+      {/* Overall Progress */}
+      <div className="glass-card p-6 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200">Overall Submission Progress</h2>
+          <span className="text-xs text-slate-500">{progress.completed}/{progress.total} done</span>
+        </div>
+        <ProgressBar value={progress.completed} max={progress.total} size="md" />
+      </div>
+
+      {/* Enrolled Courses */}
+      {courses.length > 0 && (
+        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              Active Coursework Feed
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-brand-500" />
+              My Courses
             </h2>
-            <Link
-              to="/student/assignments"
-              className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1"
-            >
-              <span>View all ({assignments.length})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
           </div>
-
-          <div className="space-y-3">
-            {assignments.slice(0, 3).map((a) => {
-              const isConfirmed = a.submissionStatus === 'CONFIRMED';
-              const dueDateFormatted = new Date(a.dueDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              });
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course, i) => {
+              const courseAssignments = assignments.filter((a) => a.courseId === course.id || a.course?.id === course.id);
+              const completedInCourse = courseAssignments.filter((a) => a.submissionStatus === 'CONFIRMED').length;
+              const totalInCourse = courseAssignments.length;
 
               return (
-                <div
-                  key={a.id}
-                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-brand-300 dark:hover:border-brand-700 transition-all"
+                <Link
+                  key={course.id}
+                  to={`/student/courses/${course.id}`}
+                  className={`glass-card glass-card-hover p-5 space-y-3 animate-fade-in-up stagger-${i + 1} block group`}
                 >
-                  <div className="space-y-1 max-w-md">
-                    <div className="flex items-center gap-2">
-                      <Badge status={a.submissionStatus} size="xs" />
-                      <span className="text-[11px] text-slate-400 dark:text-slate-400 font-medium">
-                        Due {dueDateFormatted}
-                      </span>
+                  <div className="flex items-start justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-indigo-500 flex items-center justify-center text-white shadow-md">
+                      <BookOpen className="w-5 h-5" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{a.title}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                      {a.description}
+                    <Badge variant="brand">{course.code}</Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                      {course.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {course.professor?.name || 'Professor'}
                     </p>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={a.onedriveLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                      title="Open OneDrive link"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">OneDrive</span>
-                    </a>
-
-                    {!isConfirmed ? (
-                      <button
-                        onClick={() => {
-                          setSelectedAssignment(a);
-                          setConfirmModalOpen(true);
-                        }}
-                        className="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <FileCheck className="w-3.5 h-3.5" />
-                        <span>Confirm</span>
-                      </button>
-                    ) : (
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
-                        Submitted ✓
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span>{totalInCourse} assignments</span>
+                    <span className="font-bold text-success-500">{completedInCourse}/{totalInCourse} done</span>
                   </div>
-                </div>
+                  <ProgressBar value={completedInCourse} max={totalInCourse} size="sm" showPercentage={false} />
+                </Link>
               );
             })}
           </div>
         </div>
+      )}
 
-        {/* Right Col: Group Teammates Snapshot */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Team Snapshot</h2>
-            <Link
-              to="/student/groups"
-              className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1"
-            >
-              <span>Manage</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+      {/* No Group Notice */}
+      {!group && (
+        <div className="glass-card p-6 text-center space-y-3 border-2 border-dashed border-brand-200 dark:border-brand-800 animate-fade-in-up">
+          <Users className="w-10 h-10 text-brand-400 mx-auto" />
+          <h3 className="font-bold text-slate-800 dark:text-slate-200">Join a Group to Get Started</h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">Create your own group or join an existing one to access group assignments and start collaborating with classmates.</p>
+          <Link to="/student/groups" className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all">
+            <PlusCircle className="w-4 h-4" />
+            Manage Groups
+          </Link>
+        </div>
+      )}
 
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs space-y-4 transition-colors">
-            {group ? (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div>
-                    <div className="text-sm font-black text-slate-900 dark:text-white">
-                      {group.name}
-                    </div>
-                    <div className="text-[11px] text-slate-400 font-mono">
-                      Code: {group.code}
-                    </div>
+      {/* Pending Assignments */}
+      {pendingAssignments.length > 0 && (
+        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-warning-500" />
+            Pending Assignments ({pendingAssignments.length})
+          </h2>
+          <div className="space-y-3">
+            {pendingAssignments.slice(0, 5).map((asg, i) => (
+              <div
+                key={asg.id}
+                className={`glass-card glass-card-hover p-4 flex items-center justify-between gap-4 animate-fade-in-up stagger-${i + 1}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{asg.title}</h3>
+                    <StatusBadge status={asg.submissionType} size="xs" />
+                    <StatusBadge status={asg.submissionStatus} size="xs" />
                   </div>
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                    {group.members.length}/{group.maxMembers}
-                  </span>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {asg.course && <span className="text-[11px] text-brand-500 font-semibold">{asg.course.code}</span>}
+                    <CountdownTimer targetDate={asg.dueDate} />
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  {group.members.map((m) => (
-                    <div
-                      key={m.id}
-                      className="flex items-center justify-between text-xs py-1"
+                <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={asg.onedriveLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-all"
+                    title="Open OneDrive"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                  {asg.submissionStatus !== 'CONFIRMED' && (
+                    <button
+                      onClick={() => { setSelectedAssignment(asg); setConfirmModalOpen(true); }}
+                      className="px-3 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center text-[10px]">
-                          {m.user.name.charAt(0)}
-                        </div>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {m.user.name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400">
-                        {m.role}
-                      </span>
-                    </div>
-                  ))}
+                      <FileCheck className="w-3.5 h-3.5" />
+                      Submit
+                    </button>
+                  )}
                 </div>
-
-                <Link
-                  to="/student/groups"
-                  className="w-full py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors block text-center"
-                >
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Invite Teammates</span>
-                </Link>
-              </>
-            ) : (
-              <div className="text-center py-6 space-y-3">
-                <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  You haven't formed or joined a group yet.
-                </div>
-                <Link
-                  to="/student/groups"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl shadow-xs"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Create a Group</span>
-                </Link>
               </div>
-            )}
+            ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Confirmation Modal */}
-      <ConfirmSubmissionModal
-        isOpen={confirmModalOpen}
-        onClose={() => setConfirmModalOpen(false)}
-        assignment={selectedAssignment}
-        group={group}
-        onSuccess={fetchDashboardData}
-      />
+      {/* Group Info */}
+      {group && (
+        <div className="glass-card p-5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Users className="w-4 h-4 text-brand-500" />
+              {group.name}
+            </h2>
+            <Badge variant={groupRole === 'LEADER' ? 'brand' : 'default'}>
+              {groupRole === 'LEADER' ? '👑 Leader' : 'Member'}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {group.members?.map((m) => (
+              <div key={m.userId || m.id} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-brand-400 to-indigo-400 flex items-center justify-center text-white text-[10px] font-bold">
+                  {m.user?.name?.charAt(0) || '?'}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{m.user?.name}</p>
+                  <p className="text-[10px] text-slate-400">{m.role === 'LEADER' ? '👑 Leader' : 'Member'}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-right">
+            <Link to="/student/groups" className="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline inline-flex items-center gap-1">
+              Manage Group <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Submission Modal */}
+      {confirmModalOpen && selectedAssignment && (
+        <ConfirmSubmissionModal
+          assignment={selectedAssignment}
+          isOpen={confirmModalOpen}
+          onClose={() => { setConfirmModalOpen(false); setSelectedAssignment(null); }}
+          onConfirmed={() => { setConfirmModalOpen(false); setSelectedAssignment(null); fetchDashboardData(); }}
+        />
+      )}
     </div>
   );
 };
