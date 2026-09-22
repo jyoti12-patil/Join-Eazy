@@ -7,6 +7,7 @@ import {
   unenrollStudent,
   updateCourse,
   deleteCourse,
+  getStudentCandidates,
 } from '../controllers/courses.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
@@ -20,6 +21,9 @@ import {
 const router = Router();
 
 router.use(authenticate);
+
+// Student candidates for course roster management
+router.get('/students/candidates', authorize('ADMIN'), getStudentCandidates);
 
 // Both roles can list courses (filtered by role)
 router.get('/', getCourses);

@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Modal } from '../../components/Modal';
+import { CourseRosterModal } from '../../components/CourseRosterModal';
 import { SkeletonCard, SkeletonList } from '../../components/SkeletonLoader';
 import {
   GraduationCap,
@@ -30,6 +31,8 @@ export const CourseManager = () => {
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
+  const [rosterModalOpen, setRosterModalOpen] = useState(false);
+  const [selectedCourseForRoster, setSelectedCourseForRoster] = useState(null);
   const [formData, setFormData] = useState({
     code: '',
     name: '',
@@ -57,6 +60,11 @@ export const CourseManager = () => {
     setEditingCourse(null);
     setFormData({ code: '', name: '', description: '' });
     setModalOpen(true);
+  };
+
+  const handleOpenRoster = (course) => {
+    setSelectedCourseForRoster(course);
+    setRosterModalOpen(true);
   };
 
   const handleOpenEdit = (course) => {
@@ -198,6 +206,13 @@ export const CourseManager = () => {
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
+                        onClick={() => handleOpenRoster(course)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors cursor-pointer"
+                        title="Manage course roster"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                      </button>
+                      <button
                         onClick={() => handleOpenEdit(course)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                         title="Edit course"
@@ -225,10 +240,18 @@ export const CourseManager = () => {
 
                 <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRoster(course)}
+                      className="flex items-center gap-1.5 hover:text-brand-600 dark:hover:text-brand-400 transition-colors cursor-pointer"
+                      title="Manage course roster"
+                    >
                       <Users className="w-3.5 h-3.5 text-slate-400" />
-                      <strong>{enrollCount}</strong> Students
-                    </span>
+                      <span><strong>{enrollCount}</strong> Students</span>
+                      <span className="text-[10px] text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded border border-brand-200/50 dark:border-brand-800/50 font-bold">
+                        Roster
+                      </span>
+                    </button>
                     <span className="flex items-center gap-1">
                       <Layers className="w-3.5 h-3.5 text-slate-400" />
                       <strong>{asgCount}</strong> Assignments
@@ -317,6 +340,19 @@ export const CourseManager = () => {
           </div>
         </form>
       </Modal>
+
+      {/* COURSE ROSTER MANAGEMENT MODAL */}
+      {selectedCourseForRoster && (
+        <CourseRosterModal
+          isOpen={rosterModalOpen}
+          onClose={() => {
+            setRosterModalOpen(false);
+            setSelectedCourseForRoster(null);
+          }}
+          course={selectedCourseForRoster}
+          onRosterUpdated={fetchCourses}
+        />
+      )}
     </div>
   );
 };

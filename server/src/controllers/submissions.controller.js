@@ -272,6 +272,10 @@ export const getSubmissionsByAssignment = async (req, res, next) => {
           leaderAcknowledgedAt: submission?.leaderAcknowledgedAt || null,
           submittedBy: submission?.submittedBy || null,
           submissionNote: submission?.submissionNote || null,
+          submissionId: submission?.id || null,
+          grade: submission?.grade ?? null,
+          feedback: submission?.feedback ?? null,
+          gradedAt: submission?.gradedAt || null,
         };
       });
 
@@ -330,6 +334,10 @@ export const getSubmissionsByAssignment = async (req, res, next) => {
         submittedAt: submission?.submittedAt || null,
         confirmedAt: submission?.confirmedAt || null,
         submissionNote: submission?.submissionNote || null,
+        submissionId: submission?.id || null,
+        grade: submission?.grade ?? null,
+        feedback: submission?.feedback ?? null,
+        gradedAt: submission?.gradedAt || null,
       };
     });
 
@@ -430,6 +438,10 @@ export const getMyGroupSubmissions = async (req, res, next) => {
         confirmedAt: submission?.confirmedAt || null,
         submittedBy: submission?.submittedBy || null,
         submissionNote: submission?.submissionNote || null,
+        submissionId: submission?.id || null,
+        grade: submission?.grade ?? null,
+        feedback: submission?.feedback ?? null,
+        gradedAt: submission?.gradedAt || null,
         status: submission?.confirmed ? 'CONFIRMED' : isOverdue ? 'OVERDUE' : 'PENDING',
       };
     });
@@ -448,6 +460,97 @@ export const getMyGroupSubmissions = async (req, res, next) => {
           percentage,
         },
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Grade a Submission by Submission ID (Professor only)
+ */
+export const gradeSubmission = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { grade, feedback } = req.body;
+
+    const existing = await prisma.submission.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found',
+      });
+    }
+
+    const updated = await prisma.submission.update({
+      where: { id },
+      data: {
+        grade: grade !== undefined ? (grade === null ? null : Number(grade)) : existing.grade,
+        feedback: feedback !== undefined ? (feedback ? feedback.trim() : null) : existing.feedback,
+        gradedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Submission graded successfully',
+      data: { submission: updated },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Direct grade assignment for a group or student even if no prior submission record exists (Professor only)
+ */
+export const gradeSubmissionDirect = async (req, res, next) => {
+  try {
+    const { assignmentId, groupId, studentId, grade, feedback } = req.body;
+
+    let existing = null;
+    if (groupId) {
+      existing = await prisma.submission.findFirst({
+        where: { assignmentId, groupId },
+      });
+    } else if (studentId) {
+      existing = await prisma.submission.findFirst({
+        where: { assignmentId, submittedById: studentId, groupId: null },
+      });
+    }
+
+    let submission;
+    if (existing) {
+      submission = await prisma.submission.update({
+        where: { id: existing.id },
+        data: {
+          grade: grade !== undefined ? (grade === null ? null : Number(grade)) : existing.grade,
+          feedback: feedback !== undefined ? (feedback ? feedback.trim() : null) : existing.feedback,
+          gradedAt: new Date(),
+        },
+      });
+    } else {
+      submission = await prisma.submission.create({
+        data: {
+          assignmentId,
+          groupId: groupId || null,
+          submittedById: studentId || req.user.id,
+          confirmed: true,
+          confirmedAt: new Date(),
+          grade: grade !== undefined ? (grade === null ? null : Number(grade)) : null,
+          feedback: feedback !== undefined ? (feedback ? feedback.trim() : null) : null,
+          gradedAt: new Date(),
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Grade and feedback saved successfully',
+      data: { submission },
     });
   } catch (error) {
     next(error);

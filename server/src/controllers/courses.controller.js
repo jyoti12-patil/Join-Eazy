@@ -149,6 +149,22 @@ export const getCourseById = async (req, res, next) => {
   }
 };
 
+export const getStudentCandidates = async (req, res, next) => {
+  try {
+    const students = await prisma.user.findMany({
+      where: { role: 'STUDENT' },
+      select: { id: true, name: true, email: true, studentId: true },
+      orderBy: { name: 'asc' },
+    });
+    return res.status(200).json({
+      success: true,
+      data: { students },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const enrollStudent = async (req, res, next) => {
   try {
     const { id: courseId } = req.params;
@@ -162,16 +178,27 @@ export const enrollStudent = async (req, res, next) => {
       });
     }
 
-    const student = await prisma.user.findUnique({ where: { id: studentId } });
-    if (!student || student.role !== 'STUDENT') {
+    const query = (studentId || '').trim();
+    const student = await prisma.user.findFirst({
+      where: {
+        role: 'STUDENT',
+        OR: [
+          { id: query },
+          { email: { equals: query, mode: 'insensitive' } },
+          { studentId: { equals: query, mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!student) {
       return res.status(404).json({
         success: false,
-        message: 'Student not found',
+        message: `Student not found matching "${query}". Please check the email or Student ID.`,
       });
     }
 
     const existing = await prisma.courseEnrollment.findUnique({
-      where: { courseId_studentId: { courseId, studentId } },
+      where: { courseId_studentId: { courseId, studentId: student.id } },
     });
     if (existing) {
       return res.status(409).json({
@@ -181,7 +208,7 @@ export const enrollStudent = async (req, res, next) => {
     }
 
     const enrollment = await prisma.courseEnrollment.create({
-      data: { courseId, studentId },
+      data: { courseId, studentId: student.id },
       include: {
         student: {
           select: { id: true, name: true, email: true, studentId: true },
@@ -203,14 +230,24 @@ export const unenrollStudent = async (req, res, next) => {
   try {
     const { id: courseId, studentId } = req.params;
 
-    const enrollment = await prisma.courseEnrollment.findUnique({
-      where: { courseId_studentId: { courseId, studentId } },
+    const enrollment = await prisma.courseEnrollment.findFirst({
+      where: {
+        courseId,
+        OR: [
+          { studentId },
+          { student: { email: { equals: studentId, mode: 'insensitive' } } },
+          { student: { studentId: { equals: studentId, mode: 'insensitive' } } },
+        ],
+      },
+      include: {
+        student: { select: { id: true, name: true } },
+      },
     });
 
     if (!enrollment) {
       return res.status(404).json({
         success: false,
-        message: 'Enrollment not found',
+        message: 'Enrollment record not found',
       });
     }
 
@@ -220,7 +257,8 @@ export const unenrollStudent = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Student unenrolled successfully',
+      message: `${enrollment.student?.name || 'Student'} unenrolled successfully`,
+      data: { studentId: enrollment.studentId },
     });
   } catch (error) {
     next(error);

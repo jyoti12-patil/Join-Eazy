@@ -182,10 +182,21 @@ export const AssignmentList = () => {
                     Submit
                   </button>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-success-500">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Submitted
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-success-500">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Submitted
+                    </span>
+                    {(assignment.groupSubmission?.grade !== null && assignment.groupSubmission?.grade !== undefined) ? (
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                        {assignment.groupSubmission.grade} / 10
+                      </span>
+                    ) : (assignment.individualSubmission?.grade !== null && assignment.individualSubmission?.grade !== undefined) ? (
+                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                        {assignment.individualSubmission.grade} / 10
+                      </span>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>

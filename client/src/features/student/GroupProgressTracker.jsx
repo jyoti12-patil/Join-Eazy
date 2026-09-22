@@ -215,6 +215,7 @@ export const GroupProgressTracker = () => {
                 <th className="py-3.5 px-6">Assignment Title</th>
                 <th className="py-3.5 px-4">Due Date</th>
                 <th className="py-3.5 px-4">Status</th>
+                <th className="py-3.5 px-4">Grade</th>
                 <th className="py-3.5 px-4">Confirmed Date</th>
                 <th className="py-3.5 px-4">Submitted By</th>
                 <th className="py-3.5 px-6 text-right">OneDrive Link</th>
@@ -247,6 +248,22 @@ export const GroupProgressTracker = () => {
                     </td>
                     <td className="py-4 px-4">
                       <StatusBadge status={sub.status} />
+                    </td>
+                    <td className="py-4 px-4">
+                      {sub.grade !== null && sub.grade !== undefined ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 inline-block w-fit">
+                            {sub.grade} / 10
+                          </span>
+                          {sub.feedback && (
+                            <span className="text-[10px] text-slate-400 italic truncate max-w-[120px]" title={sub.feedback}>
+                              "{sub.feedback}"
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
                     </td>
                     <td className="py-4 px-4 font-mono text-slate-600 dark:text-slate-400">
                       {confirmedDateFormatted}

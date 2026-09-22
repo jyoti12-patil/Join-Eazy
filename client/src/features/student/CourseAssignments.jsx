@@ -23,6 +23,7 @@ import {
   Filter,
   AlertCircle,
   FileCheck,
+  Award,
 } from 'lucide-react';
 
 export const CourseAssignments = () => {
@@ -319,6 +320,17 @@ export const CourseAssignments = () => {
                     {assignment.description}
                   </p>
 
+                  {/* Professor Feedback if available */}
+                  {sub?.feedback && (
+                    <div className="p-3 bg-brand-50/70 dark:bg-brand-950/30 rounded-xl border border-brand-200/60 dark:border-brand-800/40 text-xs text-brand-900 dark:text-brand-300">
+                      <div className="font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider text-[10px] mb-1 flex items-center gap-1">
+                        <Award className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                        <span>Professor Feedback {sub.grade !== null && sub.grade !== undefined ? `(${sub.grade}/10)` : ''}:</span>
+                      </div>
+                      <p className="italic text-slate-800 dark:text-slate-200">"{sub.feedback}"</p>
+                    </div>
+                  )}
+
                   <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
                     <a
                       href={assignment.onedriveLink}
@@ -349,9 +361,18 @@ export const CourseAssignments = () => {
                 {/* Action CTA */}
                 <div className="shrink-0 flex items-center">
                   {isSubmitted ? (
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 text-xs font-bold">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>Confirmed on OneDrive</span>
+                    <div className="flex flex-col sm:items-end gap-1.5">
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 text-xs font-bold">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirmed on OneDrive</span>
+                      </div>
+                      {sub?.grade !== null && sub?.grade !== undefined && (
+                        <span className="font-mono font-bold text-xs px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-800/60 flex items-center gap-1">
+                          <Award className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                          <span>Rating:</span>
+                          <strong>{sub.grade} / 10</strong>
+                        </span>
+                      )}
                     </div>
                   ) : (
                     <button

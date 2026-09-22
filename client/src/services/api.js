@@ -189,11 +189,48 @@ const mockCourses = {
     saveLocalState(state);
     return true;
   },
-  enrollStudent: async (courseId, studentId) => {
+  getStudentCandidates: async () => {
     const state = getLocalState();
-    const existing = state.courseEnrollments.find((e) => e.courseId === courseId && e.studentId === studentId);
-    if (existing) throw new Error('Student is already enrolled');
-    state.courseEnrollments.push({ courseId, studentId, enrolledAt: new Date().toISOString() });
+    return state.users.filter((u) => u.role === 'STUDENT').map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      studentId: u.studentId,
+    }));
+  },
+  enrollStudent: async (courseId, identifier) => {
+    const state = getLocalState();
+    const course = state.courses.find((c) => c.id === courseId);
+    if (!course) throw new Error('Course not found');
+    const query = (identifier || '').trim().toLowerCase();
+    const student = state.users.find(
+      (u) =>
+        u.role === 'STUDENT' &&
+        (u.id === identifier.trim() ||
+          u.email.toLowerCase() === query ||
+          (u.studentId && u.studentId.toLowerCase() === query))
+    );
+    if (!student) throw new Error(`Student not found matching "${identifier}". Check email or Student ID.`);
+    const alreadyEnrolled = state.courseEnrollments.some(
+      (e) => e.courseId === courseId && e.studentId === student.id
+    );
+    if (alreadyEnrolled) throw new Error(`${student.name} is already enrolled in this course.`);
+    const enrollment = {
+      id: `enr-${Date.now()}`,
+      courseId,
+      studentId: student.id,
+      student: { id: student.id, name: student.name, email: student.email, studentId: student.studentId },
+      enrolledAt: new Date().toISOString(),
+    };
+    state.courseEnrollments.push(enrollment);
+    saveLocalState(state);
+    return enrollment;
+  },
+  unenrollStudent: async (courseId, studentId) => {
+    const state = getLocalState();
+    state.courseEnrollments = state.courseEnrollments.filter(
+      (e) => !(e.courseId === courseId && (e.studentId === studentId || e.student?.id === studentId || e.id === studentId))
+    );
     saveLocalState(state);
     return true;
   },
@@ -394,6 +431,10 @@ const mockSubmissions = {
         hasSubmitted: Boolean(sub && sub.confirmed), acknowledgedByLeader: Boolean(sub && sub.acknowledgedByLeader),
         submittedAt: sub?.submittedAt || null, confirmedAt: sub?.confirmedAt || null,
         submittedBy: sub?.submittedBy || null, submissionNote: sub?.submissionNote || null,
+        submissionId: sub?.id || null,
+        grade: sub?.grade ?? null,
+        feedback: sub?.feedback ?? null,
+        gradedAt: sub?.gradedAt || null,
         status: sub?.confirmed ? 'CONFIRMED' : isOverdue ? 'OVERDUE' : 'PENDING',
       };
     });
@@ -401,6 +442,49 @@ const mockSubmissions = {
     const completed = submissions.filter((s) => s.hasSubmitted).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { submissions, stats: { total, completed, percentage } };
+  },
+  gradeSubmission: async ({ submissionId, assignmentId, groupId, studentId, grade, feedback }) => {
+    const state = getLocalState();
+    let subIndex = -1;
+    if (submissionId) {
+      subIndex = state.submissions.findIndex((s) => s.id === submissionId);
+    }
+    if (subIndex === -1 && assignmentId) {
+      if (groupId) {
+        subIndex = state.submissions.findIndex((s) => s.assignmentId === assignmentId && s.groupId === groupId);
+      } else if (studentId) {
+        subIndex = state.submissions.findIndex((s) => s.assignmentId === assignmentId && s.submittedById === studentId && !s.groupId);
+      }
+    }
+
+    const numericGrade = grade !== undefined && grade !== null && grade !== '' ? Number(grade) : null;
+    const cleanFeedback = feedback ? feedback.trim() : null;
+
+    if (subIndex >= 0) {
+      state.submissions[subIndex] = {
+        ...state.submissions[subIndex],
+        grade: numericGrade,
+        feedback: cleanFeedback,
+        gradedAt: new Date().toISOString(),
+      };
+      saveLocalState(state);
+      return state.submissions[subIndex];
+    } else {
+      const newSub = {
+        id: `sub-${Date.now()}`,
+        assignmentId,
+        groupId: groupId || null,
+        submittedById: studentId || 'admin',
+        confirmed: true,
+        confirmedAt: new Date().toISOString(),
+        grade: numericGrade,
+        feedback: cleanFeedback,
+        gradedAt: new Date().toISOString(),
+      };
+      state.submissions.push(newSub);
+      saveLocalState(state);
+      return newSub;
+    }
   },
   getByAssignment: async (assignmentId) => {
     const state = getLocalState();
@@ -428,6 +512,10 @@ const mockSubmissions = {
           submittedAt: sub?.submittedAt || null,
           confirmedAt: sub?.confirmedAt || null,
           submissionNote: sub?.submissionNote || null,
+          submissionId: sub?.id || null,
+          grade: sub?.grade ?? null,
+          feedback: sub?.feedback ?? null,
+          gradedAt: sub?.gradedAt || null,
         };
       });
 
@@ -464,6 +552,10 @@ const mockSubmissions = {
         submittedAt: sub?.submittedAt || null, confirmedAt: sub?.confirmedAt || null,
         leaderAcknowledgedAt: sub?.leaderAcknowledgedAt || null,
         submittedBy: sub?.submittedBy || null, submissionNote: sub?.submissionNote || null,
+        submissionId: sub?.id || null,
+        grade: sub?.grade ?? null,
+        feedback: sub?.feedback ?? null,
+        gradedAt: sub?.gradedAt || null,
       };
     });
     const totalTargetGroups = groupStatus.length;
@@ -605,6 +697,16 @@ export const api = {
     try { const res = await axiosInstance.post(`/courses/${courseId}/enroll`, { studentId }); return res.data.data.enrollment; }
     catch (e) { if (e.response && e.response.status >= 400 && e.response.status < 500) throw new Error(extractErrorMessage(e)); return await mockCourses.enrollStudent(courseId, studentId); }
   },
+  unenrollStudent: async (courseId, studentId) => {
+    if (isMockSession()) return await mockCourses.unenrollStudent(courseId, studentId);
+    try { await axiosInstance.delete(`/courses/${courseId}/enroll/${studentId}`); return true; }
+    catch (e) { if (e.response && e.response.status >= 400 && e.response.status < 500) throw new Error(extractErrorMessage(e)); return await mockCourses.unenrollStudent(courseId, studentId); }
+  },
+  getStudentCandidates: async () => {
+    if (isMockSession()) return await mockCourses.getStudentCandidates();
+    try { const res = await axiosInstance.get('/courses/students/candidates'); return res.data.data.students; }
+    catch (e) { return await mockCourses.getStudentCandidates(); }
+  },
 
   // Groups
   getMyGroup: async (userId) => {
@@ -686,6 +788,21 @@ export const api = {
     if (isMockSession()) return await mockSubmissions.getByAssignment(assignmentId);
     try { const res = await axiosInstance.get(`/submissions/assignment/${assignmentId}`); return res.data.data; }
     catch (e) { return await mockSubmissions.getByAssignment(assignmentId); }
+  },
+  gradeSubmission: async (submissionId, payload) => {
+    if (isMockSession()) return await mockSubmissions.gradeSubmission({ submissionId, ...payload });
+    try {
+      if (submissionId) {
+        const res = await axiosInstance.put(`/submissions/${submissionId}/grade`, payload);
+        return res.data.data.submission;
+      } else {
+        const res = await axiosInstance.post('/submissions/grade', payload);
+        return res.data.data.submission;
+      }
+    } catch (e) {
+      if (e.response && e.response.status >= 400 && e.response.status < 500) throw new Error(extractErrorMessage(e));
+      return await mockSubmissions.gradeSubmission({ submissionId, ...payload });
+    }
   },
 
   // Analytics

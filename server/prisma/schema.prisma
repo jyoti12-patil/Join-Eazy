@@ -147,6 +147,9 @@ model Submission {
   confirmedAt           DateTime?
   acknowledgedByLeader  Boolean    @default(false)
   leaderAcknowledgedAt  DateTime?
+  grade                 Float?
+  feedback              String?
+  gradedAt              DateTime?
 
   @@unique([assignmentId, groupId])
   @@map("submissions")

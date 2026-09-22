@@ -23,7 +23,9 @@ import {
   AlertCircle,
   Mail,
   GraduationCap,
+  Award,
 } from 'lucide-react';
+import { GradeSubmissionModal } from '../../components/GradeSubmissionModal';
 
 export const SubmissionTracker = () => {
   const { user } = useAuth();
@@ -37,6 +39,8 @@ export const SubmissionTracker = () => {
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, SUBMITTED, PENDING
   const [sortBy, setSortBy] = useState('NAME'); // NAME, STATUS, DATE
+  const [gradeModalOpen, setGradeModalOpen] = useState(false);
+  const [selectedTargetForGrading, setSelectedTargetForGrading] = useState(null);
 
   // Initial load
   useEffect(() => {
@@ -82,6 +86,31 @@ export const SubmissionTracker = () => {
     groupStatus: [],
     studentStatus: [],
     assignment: null,
+  };
+
+  const handleOpenGradeModal = (item) => {
+    setSelectedTargetForGrading({
+      assignmentId: selectedAssignmentId,
+      assignmentTitle: assignment?.title || 'Assignment',
+      onedriveLink: assignment?.onedriveLink,
+      submissionId: item.submissionId || null,
+      student: item.student || null,
+      studentId: item.student?.id || null,
+      group: item.group || null,
+      groupId: item.group?.id || null,
+      grade: item.grade ?? null,
+      feedback: item.feedback ?? null,
+      submissionNote: item.submissionNote || null,
+    });
+    setGradeModalOpen(true);
+  };
+
+  const refreshTrackingData = async () => {
+    if (!selectedAssignmentId) return;
+    try {
+      const res = await api.getSubmissionsByAssignment(selectedAssignmentId);
+      setTrackingData(res);
+    } catch (err) {}
   };
 
   const isIndividual = (assignment?.submissionType === 'INDIVIDUAL') || (trackingData?.assignment?.submissionType === 'INDIVIDUAL');
@@ -376,8 +405,9 @@ export const SubmissionTracker = () => {
                     <th className="py-4 px-6">Student</th>
                     <th className="py-4 px-4">Student ID</th>
                     <th className="py-4 px-4">Status</th>
+                    <th className="py-4 px-4">Rating</th>
                     <th className="py-4 px-4">Confirmed At</th>
-                    <th className="py-4 px-6">Submission Note</th>
+                    <th className="py-4 px-6">Feedback / Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
@@ -421,17 +451,42 @@ export const SubmissionTracker = () => {
                             size="sm"
                           />
                         </td>
+                        <td className="py-4 px-4">
+                          {item.grade !== null && item.grade !== undefined ? (
+                            <span className="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                              {item.grade} / 10
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[11px]">Unrated</span>
+                          )}
+                        </td>
                         <td className="py-4 px-4 font-mono text-slate-600 dark:text-slate-400">
                           {confirmedAtFormatted}
                         </td>
-                        <td className="py-4 px-6 text-slate-600 dark:text-slate-300 max-w-xs">
-                          {item.submissionNote ? (
-                            <span className="italic text-slate-700 dark:text-slate-300">
-                              "{item.submissionNote}"
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 dark:text-slate-500">—</span>
-                          )}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="truncate max-w-[150px]">
+                              {item.feedback ? (
+                                <span className="italic text-slate-700 dark:text-slate-300 truncate block text-[11px]" title={item.feedback}>
+                                  "{item.feedback}"
+                                </span>
+                              ) : item.submissionNote ? (
+                                <span className="text-slate-500 dark:text-slate-400 truncate block text-[11px]" title={item.submissionNote}>
+                                  Note: {item.submissionNote}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500">—</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGradeModal(item)}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-brand-50 hover:text-brand-600 dark:bg-slate-800 dark:hover:bg-brand-950/60 dark:hover:text-brand-400 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                            >
+                              <Award className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                              <span>{item.grade !== null && item.grade !== undefined ? 'Edit Rating' : 'Rate'}</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -504,7 +559,22 @@ export const SubmissionTracker = () => {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="flex items-center gap-2">
+                      {item.grade !== null && item.grade !== undefined ? (
+                        <span className="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                          Rating: {item.grade} / 10
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs font-semibold">Unrated</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenGradeModal(item)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-brand-50 hover:text-brand-600 dark:bg-slate-800 dark:hover:bg-brand-950/60 dark:hover:text-brand-400 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Award className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                        <span>{item.grade !== null && item.grade !== undefined ? 'Edit Rating' : 'Rate Group'}</span>
+                      </button>
                       <StatusBadge
                         status={isSubmitted ? 'CONFIRMED' : 'PENDING'}
                         size="md"
@@ -512,13 +582,23 @@ export const SubmissionTracker = () => {
                     </div>
                   </div>
 
-                  {/* Attached Note if any */}
+                  {/* Attached Note & Feedback */}
                   {item.submissionNote && (
                     <div className="p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
                       <div className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] mb-1">
                         Student Submission Note:
                       </div>
                       <p className="italic text-slate-800 dark:text-slate-200">"{item.submissionNote}"</p>
+                    </div>
+                  )}
+
+                  {item.feedback && (
+                    <div className="p-3 bg-brand-50/70 dark:bg-brand-950/30 rounded-xl border border-brand-200/60 dark:border-brand-800/40 text-xs text-brand-900 dark:text-brand-300">
+                      <div className="font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider text-[10px] mb-1 flex items-center gap-1">
+                        <Award className="w-3 h-3" />
+                        <span>Instructor Feedback ({item.grade !== null && item.grade !== undefined ? `${item.grade} / 10` : 'Rated'}):</span>
+                      </div>
+                      <p className="italic text-slate-800 dark:text-slate-200">"{item.feedback}"</p>
                     </div>
                   )}
 
@@ -560,6 +640,19 @@ export const SubmissionTracker = () => {
             })}
           </div>
         )
+      )}
+
+      {/* GRADE & FEEDBACK MODAL */}
+      {selectedTargetForGrading && (
+        <GradeSubmissionModal
+          isOpen={gradeModalOpen}
+          onClose={() => {
+            setGradeModalOpen(false);
+            setSelectedTargetForGrading(null);
+          }}
+          target={selectedTargetForGrading}
+          onGradeSaved={refreshTrackingData}
+        />
       )}
     </div>
   );
