@@ -10,8 +10,7 @@ import { CountdownTimer } from '../../components/CountdownTimer';
 import { ConfirmSubmissionModal } from '../../components/ConfirmSubmissionModal';
 import { SkeletonCard } from '../../components/SkeletonLoader';
 import {
-  BookOpen, ExternalLink, FileCheck, Filter, Clock, CheckCircle2,
-  AlertTriangle, Search, Layers, ChevronDown,
+  BookOpen, ExternalLink, FileCheck, Clock, CheckCircle2, Search,
 } from 'lucide-react';
 
 export const AssignmentList = () => {

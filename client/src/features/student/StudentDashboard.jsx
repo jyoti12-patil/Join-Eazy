@@ -11,7 +11,7 @@ import { SkeletonDashboard } from '../../components/SkeletonLoader';
 import { ConfirmSubmissionModal } from '../../components/ConfirmSubmissionModal';
 import {
   Users, BookOpen, CheckCircle2, Clock, ArrowRight, ExternalLink,
-  PlusCircle, FileCheck, Award, Sparkles, Calendar, GraduationCap, Layers
+  PlusCircle, FileCheck, Award, Sparkles, GraduationCap
 } from 'lucide-react';
 
 export const StudentDashboard = () => {

@@ -10,17 +10,12 @@ import { SkeletonList } from '../../components/SkeletonLoader';
 import {
   BookOpen,
   PlusCircle,
-  Calendar,
   ExternalLink,
   Edit2,
   Trash2,
   Users,
   User,
-  CheckCircle,
-  Clock,
   Cloud,
-  GraduationCap,
-  Filter,
   Search,
 } from 'lucide-react';
 

@@ -12,7 +12,6 @@ import {
   ExternalLink,
   Target,
   Sparkles,
-  Users,
 } from 'lucide-react';
 
 export const GroupProgressTracker = () => {

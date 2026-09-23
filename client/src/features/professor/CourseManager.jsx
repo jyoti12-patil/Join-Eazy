@@ -14,8 +14,6 @@ import {
   Edit2,
   Trash2,
   Search,
-  ExternalLink,
-  Calendar,
   Layers,
   ArrowRight,
 } from 'lucide-react';

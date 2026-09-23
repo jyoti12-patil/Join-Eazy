@@ -15,8 +15,6 @@ import {
   Shield,
   Search,
   CheckCircle,
-  AlertCircle,
-  Share2,
 } from 'lucide-react';
 
 export const GroupManager = () => {

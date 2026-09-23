@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { Badge } from '../../components/Badge';
-import { Users, Mail, Hash, Crown, Calendar, Shield } from 'lucide-react';
+import { Users, Mail, Hash, Crown } from 'lucide-react';
 
 export const GroupOverview = () => {
   const toast = useToast();

@@ -20,8 +20,6 @@ import {
   Clock,
   BookOpen,
   Search,
-  Filter,
-  AlertCircle,
   FileCheck,
   Award,
 } from 'lucide-react';

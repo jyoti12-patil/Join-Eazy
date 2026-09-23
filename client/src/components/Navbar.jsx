@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const Navbar = ({ toggleMobileSidebar }) => {
-  const { user, isStudent, isAdmin, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const toast = useToast();

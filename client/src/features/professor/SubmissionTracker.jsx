@@ -7,22 +7,13 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { ProgressBar } from '../../components/ProgressBar';
 import { SkeletonList, SkeletonCard } from '../../components/SkeletonLoader';
 import {
-  CheckSquare,
-  CheckCircle2,
   Clock,
   ExternalLink,
   Users,
-  User,
   Search,
-  Filter,
   Cloud,
-  FileText,
   UserCheck,
-  ArrowUpDown,
   CheckCircle,
-  AlertCircle,
-  Mail,
-  GraduationCap,
   Award,
 } from 'lucide-react';
 import { GradeSubmissionModal } from '../../components/GradeSubmissionModal';

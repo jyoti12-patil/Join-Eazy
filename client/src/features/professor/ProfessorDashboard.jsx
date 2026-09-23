@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import {
   BarChart3, Users, BookOpen, CheckCircle2, TrendingUp, PlusCircle,
-  ExternalLink, Clock, Sparkles, ArrowRight, GraduationCap, Layers,
+  Clock, Sparkles, ArrowRight, GraduationCap, Layers,
 } from 'lucide-react';
 
 export const ProfessorDashboard = () => {
