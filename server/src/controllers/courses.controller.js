@@ -186,6 +186,8 @@ export const enrollStudent = async (req, res, next) => {
           { id: query },
           { email: { equals: query, mode: 'insensitive' } },
           { studentId: { equals: query, mode: 'insensitive' } },
+          { name: { equals: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } },
         ],
       },
     });
@@ -193,7 +195,7 @@ export const enrollStudent = async (req, res, next) => {
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: `Student not found matching "${query}". Please check the email or Student ID.`,
+        message: `Student not found matching "${query}". Please check the student name, email, or Student ID.`,
       });
     }
 

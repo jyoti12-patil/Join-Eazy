@@ -208,9 +208,11 @@ const mockCourses = {
         u.role === 'STUDENT' &&
         (u.id === identifier.trim() ||
           u.email.toLowerCase() === query ||
-          (u.studentId && u.studentId.toLowerCase() === query))
+          (u.studentId && u.studentId.toLowerCase() === query) ||
+          u.name.toLowerCase() === query ||
+          u.name.toLowerCase().includes(query))
     );
-    if (!student) throw new Error(`Student not found matching "${identifier}". Check email or Student ID.`);
+    if (!student) throw new Error(`Student not found matching "${identifier}". Check name, email, or Student ID.`);
     const alreadyEnrolled = state.courseEnrollments.some(
       (e) => e.courseId === courseId && e.studentId === student.id
     );

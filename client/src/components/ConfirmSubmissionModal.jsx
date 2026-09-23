@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
@@ -16,6 +16,14 @@ export const ConfirmSubmissionModal = ({ assignment, isOpen, onClose, onConfirme
   const [submissionNote, setSubmissionNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setStep(1);
+      setSubmissionNote('');
+      setError('');
+    }
+  }, [isOpen, assignment?.id]);
 
   if (!isOpen || !assignment) return null;
 

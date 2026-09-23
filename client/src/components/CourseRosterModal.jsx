@@ -92,10 +92,25 @@ export const CourseRosterModal = ({ isOpen, onClose, course, onRosterUpdated }) 
   }, [enrolledStudents, searchFilter]);
 
   const handleEnroll = async (identifierToEnroll) => {
-    const target = (identifierToEnroll || studentInput).trim();
+    let target = (identifierToEnroll || studentInput).trim();
     if (!target) {
       toast.error('Please enter a student name, email, or Student ID');
       return;
+    }
+
+    if (!identifierToEnroll) {
+      // If entered manually, check if it matches a candidate
+      const match = candidates.find(
+        (c) =>
+          !enrolledIds.has(c.id) &&
+          (c.name.toLowerCase() === target.toLowerCase() ||
+           c.email.toLowerCase() === target.toLowerCase() ||
+           (c.studentId && c.studentId.toLowerCase() === target.toLowerCase()))
+      ) || (candidateSuggestions.length === 1 ? candidateSuggestions[0] : null);
+
+      if (match) {
+        target = match.email || match.id;
+      }
     }
 
     setEnrolling(true);

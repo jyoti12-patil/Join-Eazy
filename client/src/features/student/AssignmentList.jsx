@@ -44,7 +44,11 @@ export const AssignmentList = () => {
   const filteredAssignments = useMemo(() => {
     return assignments.filter((a) => {
       if (courseIdFilter && a.courseId !== courseIdFilter && a.course?.id !== courseIdFilter) return false;
-      if (statusFilter !== 'ALL' && a.submissionStatus !== statusFilter) return false;
+      if (statusFilter === 'NOT_SUBMITTED') {
+        if (a.submissionStatus !== 'NOT_SUBMITTED' && a.submissionStatus !== 'PENDING_CONFIRMATION') return false;
+      } else if (statusFilter !== 'ALL' && a.submissionStatus !== statusFilter) {
+        return false;
+      }
       if (typeFilter !== 'ALL' && a.submissionType !== typeFilter) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -55,8 +59,12 @@ export const AssignmentList = () => {
   }, [assignments, statusFilter, typeFilter, searchQuery, courseIdFilter]);
 
   const statusCounts = useMemo(() => {
-    const counts = { ALL: assignments.length, CONFIRMED: 0, NOT_SUBMITTED: 0, OVERDUE: 0, PENDING_CONFIRMATION: 0 };
-    assignments.forEach((a) => { counts[a.submissionStatus] = (counts[a.submissionStatus] || 0) + 1; });
+    const counts = { ALL: assignments.length, CONFIRMED: 0, NOT_SUBMITTED: 0, OVERDUE: 0 };
+    assignments.forEach((a) => {
+      if (a.submissionStatus === 'CONFIRMED') counts.CONFIRMED = (counts.CONFIRMED || 0) + 1;
+      else if (a.submissionStatus === 'OVERDUE') counts.OVERDUE = (counts.OVERDUE || 0) + 1;
+      else counts.NOT_SUBMITTED = (counts.NOT_SUBMITTED || 0) + 1;
+    });
     return counts;
   }, [assignments]);
 
@@ -181,20 +189,27 @@ export const AssignmentList = () => {
                     Submit
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-success-500">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Submitted
-                    </span>
-                    {(assignment.groupSubmission?.grade !== null && assignment.groupSubmission?.grade !== undefined) ? (
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
-                        {assignment.groupSubmission.grade} / 10
+                  <div className="flex flex-col sm:items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-success-500">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Submitted
                       </span>
-                    ) : (assignment.individualSubmission?.grade !== null && assignment.individualSubmission?.grade !== undefined) ? (
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
-                        {assignment.individualSubmission.grade} / 10
-                      </span>
-                    ) : null}
+                      {(asg.groupSubmission?.grade !== null && asg.groupSubmission?.grade !== undefined) ? (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                          {asg.groupSubmission.grade} / 10
+                        </span>
+                      ) : (asg.individualSubmission?.grade !== null && asg.individualSubmission?.grade !== undefined) ? (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
+                          {asg.individualSubmission.grade} / 10
+                        </span>
+                      ) : null}
+                    </div>
+                    {(asg.groupSubmission?.feedback || asg.individualSubmission?.feedback) && (
+                      <p className="text-[11px] text-slate-500 italic max-w-xs text-right">
+                        "{asg.groupSubmission?.feedback || asg.individualSubmission?.feedback}"
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

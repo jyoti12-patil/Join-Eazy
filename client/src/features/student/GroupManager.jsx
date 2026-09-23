@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -60,6 +60,17 @@ export const GroupManager = () => {
       fetchGroupData();
     }
   }, [user]);
+
+  const assignedGroupMap = useMemo(() => {
+    const map = {};
+    allGroups.forEach((g) => {
+      g.members?.forEach((m) => {
+        const uid = m.userId || m.user?.id || m.id;
+        if (uid) map[uid] = g.name;
+      });
+    });
+    return map;
+  }, [allGroups]);
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
@@ -478,26 +489,35 @@ export const GroupManager = () => {
                     !group?.members.some((m) => m.userId === stu.id) &&
                     stu.id !== user.id
                 )
-                .map((stu) => (
-                  <div
-                    key={stu.id}
-                    className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-brand-50/50 dark:hover:bg-brand-950/40 flex items-center justify-between transition-colors"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{stu.name}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                        {stu.email} {stu.studentId && `• ${stu.studentId}`}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAddMember(stu.email)}
-                      className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-brand-600 dark:hover:bg-brand-600 text-slate-700 dark:text-slate-200 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-transparent text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
+                .map((stu) => {
+                  const assignedGroupName = assignedGroupMap[stu.id] || stu.groupMemberships?.[0]?.group?.name;
+                  return (
+                    <div
+                      key={stu.id}
+                      className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40 flex items-center justify-between transition-colors"
                     >
-                      Invite
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{stu.name}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                          {stu.email} {stu.studentId && `• ${stu.studentId}`}
+                        </div>
+                      </div>
+                      {assignedGroupName ? (
+                        <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded">
+                          In {assignedGroupName}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleAddMember(stu.email)}
+                          className="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-brand-600 dark:hover:bg-brand-600 text-slate-700 dark:text-slate-200 hover:text-white dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-transparent text-xs font-bold rounded-lg transition-all shadow-2xs cursor-pointer"
+                        >
+                          Invite
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>

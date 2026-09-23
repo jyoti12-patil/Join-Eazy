@@ -371,6 +371,11 @@ export const CourseAssignments = () => {
                           <strong>{sub.grade} / 10</strong>
                         </span>
                       )}
+                      {sub?.feedback && (
+                        <p className="text-[11px] text-slate-500 italic max-w-xs text-right">
+                          "{sub.feedback}"
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <button

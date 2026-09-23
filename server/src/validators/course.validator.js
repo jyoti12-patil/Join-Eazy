@@ -7,7 +7,7 @@ export const createCourseSchema = z.object({
 });
 
 export const enrollStudentSchema = z.object({
-  studentId: z.string().min(1, 'Student ID is required'),
+  studentId: z.string().trim().min(1, 'Student name, email, or Student ID is required'),
 });
 
 export const updateCourseSchema = z.object({

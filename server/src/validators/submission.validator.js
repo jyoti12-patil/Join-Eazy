@@ -15,7 +15,11 @@ export const confirmSubmissionSchema = z.object({
 });
 
 export const gradeSubmissionSchema = z.object({
-  grade: z.coerce.number().min(1, 'Rating must be between 1 and 10').max(10, 'Rating cannot exceed 10').nullable().optional(),
+  grade: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce.number().min(1, 'Rating must be between 1 and 10').max(10, 'Rating cannot exceed 10').nullable().optional()
+    ),
   feedback: z.string().trim().max(2000, 'Feedback cannot exceed 2000 characters').nullable().optional(),
 });
 
@@ -23,6 +27,10 @@ export const gradeSubmissionDirectSchema = z.object({
   assignmentId: z.string().min(1, 'Assignment ID is required'),
   groupId: z.string().optional().nullable(),
   studentId: z.string().optional().nullable(),
-  grade: z.coerce.number().min(1, 'Rating must be between 1 and 10').max(10, 'Rating cannot exceed 10').nullable().optional(),
+  grade: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce.number().min(1, 'Rating must be between 1 and 10').max(10, 'Rating cannot exceed 10').nullable().optional()
+    ),
   feedback: z.string().trim().max(2000, 'Feedback cannot exceed 2000 characters').nullable().optional(),
 });
